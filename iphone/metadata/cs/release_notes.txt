@@ -1,0 +1,19 @@
+- Nová data OSM k 15. dubnu 2022
+- Přidány články Wikipedie pro mnoho objektů (experimentální)
+- Vylepšené směry tras automobilů
+- Některé optimalizace rychlosti a baterie
+- Mnoho vylepšení trasování
+- Opraveno trasování metra v některých městech
+- Přidány překlady do baskičtiny (Euskara)
+- Vylepšené překlady do italštiny a němčiny
+- Častější kreslení jednosměrných šipek
+- Odstraněny radnice a zahrady z prohlídek památek
+- Použití telefonu z "mobilní" značky OSM
+- Přidáno více typů prodejních_automatů
+- Přidáno landuse=education
+- Oranžová výplň pro školy, školky a plochy landuse=education
+- Opraveno vyhledávání v kategorii Recyklace
+- Opraveno zobrazování přístupu k internetu
+- Opravena serializace popisů v souboru edits.xml
+- Opraveno vykreslování písma
+- Sledování našich novinek v dialogu "?"
