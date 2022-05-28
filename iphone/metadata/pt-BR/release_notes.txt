@@ -1,0 +1,19 @@
+• Novos dados OSM, 15 de abril de 2022
+• Adicionados artigos da Wikipedia para muitos objetos (experimental)
+• Melhoradas direções de rotas para carro
+• Algumas otimizações de velocidade e bateria
+• Muitas melhorias de rotas
+• Corrigidas as rotas do metrô em algumas cidades
+• Adicionada a tradução de Euskara (Basco)
+• Melhoradas as traduções do italiano e DE
+• Mostra setas de via com mais frequência
+• Removidas as prefeituras e jardins de passeios turísticos
+• Use o telefone da categoria OSM "móvel"
+• Adicionados mais tipos de vending_machine
+• Adicionado landuse=education
+• Preenchimento laranja para escolas, jardim-de-infância e landuse=education
+• Corrigida a busca na categoria de reciclagem
+• Corrigida a maneira de mostrar o acesso à internet
+• Corrigida a colocação das descrições no edits.xml
+• Corrigida a renderização da fonte
+• Aviso de acompanhe nossas novidades no "?"
