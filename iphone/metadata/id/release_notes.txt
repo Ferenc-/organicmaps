@@ -1,0 +1,10 @@
+• Data OSM baru per 15 Mei 2022
+• Diperbaiki kerusakan memori rendah untuk perutean mobil
+• Petunjuk arah mobil dan pejalan kaki ditingkatkan
+• Perutean lintas wilayah ditingkatkan
+• Diperbaiki beberapa masalah rute pejalan kaki/sepeda/mobil
+• Beberapa pengoptimalan kinerja
+• Diperbaiki pembukaan URL non-ASCII dan URL tanpa HTTP(S)
+• Diperbaiki beberapa terjemahan
+• Ditambahkan bahasa Marathi
+• Ditambahkan font Devanagari
