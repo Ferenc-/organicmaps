@@ -7,6 +7,7 @@ import android.os.Debug;
 
 import androidx.annotation.NonNull;
 
+// Called from JNI.
 @SuppressWarnings("unused")
 public class MemLogging
 {

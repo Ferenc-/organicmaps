@@ -15,7 +15,6 @@ import com.mapswithme.maps.BuildConfig;
 import com.mapswithme.maps.MwmApplication;
 import com.mapswithme.maps.R;
 import com.mapswithme.util.Utils;
-import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
 
 import java.io.File;
@@ -23,13 +22,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * By default uses Android's system logger.
  * After an initFileLogging() call can use a custom file logging implementation.
+ *
+ * Its important to have only system logging here to avoid infinite loop
+ * (file loggers call getEnabledLogsFolder() in preparation to write).
  */
 @ThreadSafe
 public class LoggerFactory
@@ -46,19 +47,19 @@ public class LoggerFactory
     public void onCompleted(final boolean success, @Nullable final String zipPath);
   }
 
-  public final static LoggerFactory INSTANCE = new LoggerFactory();
-  public boolean isFileLoggingEnabled = false;
-
-  @NonNull
-  @GuardedBy("this")
-  private final EnumMap<Type, BaseLogger> mLoggers = new EnumMap<>(Type.class);
   private final static String TAG = LoggerFactory.class.getSimpleName();
   private final static String CORE_TAG = "OMcore";
+
+  public final static LoggerFactory INSTANCE = new LoggerFactory();
+
+  @NonNull
+  private final EnumMap<Type, Logger> mLoggers = new EnumMap<>(Type.class);
   @Nullable
-  @GuardedBy("this")
   private ExecutorService mFileLoggerExecutor;
   @Nullable
   private Application mApplication;
+  private boolean mIsFileLoggingEnabled = false;
+  @Nullable
   private String mLogsFolder;
 
   private LoggerFactory()
@@ -66,66 +67,75 @@ public class LoggerFactory
     Log.i(LoggerFactory.class.getSimpleName(), "Logging started");
   }
 
-  public void initFileLogging(@NonNull Application application)
+  public synchronized void initFileLogging(@NonNull Application application)
   {
-    getLogger(Type.MISC).i(TAG, "Init file logging");
+    Log.i(TAG, "Init file logging");
     mApplication = application;
-    ensureLogsFolder();
 
     final SharedPreferences prefs = MwmApplication.prefs(mApplication);
     // File logging is enabled by default for beta builds.
-    isFileLoggingEnabled = prefs.getBoolean(mApplication.getString(R.string.pref_enable_logging),
-                                            BuildConfig.BUILD_TYPE.equals("beta"));
-    getLogger(Type.MISC).i(TAG, "Logging config: isFileLoggingEnabled: " + isFileLoggingEnabled +
-                                "; logs folder: " + mLogsFolder);
+    mIsFileLoggingEnabled = prefs.getBoolean(mApplication.getString(R.string.pref_enable_logging),
+                                             BuildConfig.BUILD_TYPE.equals("beta"));
+    Log.i(TAG, "isFileLoggingEnabled preference: " + mIsFileLoggingEnabled);
+    mIsFileLoggingEnabled = mIsFileLoggingEnabled && ensureLogsFolder() != null;
 
-    // Set native logging level, save into shared preferences, update already created loggers if any.
-    switchFileLoggingEnabled(isFileLoggingEnabled);
+    // Set native logging level, save into shared preferences.
+    switchFileLoggingEnabled(mIsFileLoggingEnabled);
+  }
+
+  /**
+   * Returns logs folder path if file logging is enabled.
+   * Switches off file logging if the path doesn't exist and can't be created.
+   */
+  @Nullable
+  synchronized String getEnabledLogsFolder()
+  {
+    if (!mIsFileLoggingEnabled)
+      return null;
+
+    final String logsFolder = ensureLogsFolder();
+    if (logsFolder == null)
+      switchFileLoggingEnabled(false);
+
+    return logsFolder;
   }
 
   /**
    * Ensures logs folder exists.
    * Tries to create it and/or re-get a path from the system, falling back to the internal storage.
-   * Switches off file logging if nothing had helped.
-   *
-   * Its important to have only system logging here to avoid infinite loop
-   * (file loggers call ensureLogsFolder() in preparation to write).
+   * NOTE: initFileLogging() must be called before.
    *
    * @return logs folder path, null if it can't be created
-   *
-   * NOTE: initFileLogging() must be called before.
    */
   @Nullable
-  public synchronized String ensureLogsFolder()
+  private String ensureLogsFolder()
   {
     assert mApplication != null : "mApplication must be initialized first by calling initFileLogging()";
 
     if (mLogsFolder != null && createWritableDir(mLogsFolder))
       return mLogsFolder;
 
-    mLogsFolder = null;
     mLogsFolder = createLogsFolder(mApplication.getExternalFilesDir(null));
     if (mLogsFolder == null)
       mLogsFolder = createLogsFolder(mApplication.getFilesDir());
 
     if (mLogsFolder == null)
-    {
       Log.e(TAG, "Can't create any logs folder");
-      if (isFileLoggingEnabled)
-        switchFileLoggingEnabled(false);
-    }
 
     return mLogsFolder;
   }
 
-  // Only system logging allowed, see ensureLogsFolder().
-  private synchronized boolean createWritableDir(@NonNull final String path)
+  private boolean createWritableDir(@NonNull final String path)
   {
     final File dir = new File(path);
-    if (!dir.exists() && !dir.mkdirs())
+    if (!dir.exists())
     {
-      Log.e(TAG, "Can't create a logs folder " + path);
-      return false;
+      Log.i(TAG, "Creating logs folder " + path);
+      if (!dir.mkdirs())
+      {
+        Log.e(TAG, "Can't create a logs folder " + path);
+        return false;
+      }
     }
     if (!dir.canWrite())
     {
@@ -135,9 +145,8 @@ public class LoggerFactory
     return true;
   }
 
-  // Only system logging allowed, see ensureLogsFolder().
   @Nullable
-  private synchronized String createLogsFolder(@Nullable final File dir)
+  private String createLogsFolder(@Nullable final File dir)
   {
     if (dir != null)
     {
@@ -148,19 +157,20 @@ public class LoggerFactory
     return null;
   }
 
-  // Only system logging allowed, see ensureLogsFolder().
-  private synchronized void switchFileLoggingEnabled(boolean enabled)
+  private void switchFileLoggingEnabled(boolean enabled)
   {
-    enabled = enabled && mLogsFolder != null;
-    Log.i(TAG, "Switch isFileLoggingEnabled to " + enabled);
-    isFileLoggingEnabled = enabled;
+    mIsFileLoggingEnabled = enabled;
     nativeToggleCoreDebugLogs(enabled || BuildConfig.DEBUG);
     MwmApplication.prefs(mApplication)
                   .edit()
                   .putBoolean(mApplication.getString(R.string.pref_enable_logging), enabled)
                   .apply();
-    updateLoggers();
-    Log.i(TAG, "File logging " + (enabled ? "started to " + mLogsFolder : "stopped"));
+    Log.i(TAG, "Logging to " + (enabled ? "logs folder " + mLogsFolder : "system log"));
+  }
+
+  public synchronized boolean isFileLoggingEnabled()
+  {
+    return mIsFileLoggingEnabled;
   }
 
   /**
@@ -168,15 +178,16 @@ public class LoggerFactory
    *
    * NOTE: initFileLogging() must be called before.
    */
-  public boolean setFileLoggingEnabled(boolean enabled)
+  public synchronized boolean setFileLoggingEnabled(boolean enabled)
   {
     assert mApplication != null : "mApplication must be initialized first by calling initFileLogging()";
 
-    if (isFileLoggingEnabled != enabled)
+    if (mIsFileLoggingEnabled != enabled)
     {
+      Log.i(TAG, "Switching isFileLoggingEnabled to " + enabled);
       if (enabled && ensureLogsFolder() == null)
       {
-        Log.e(TAG, "Can't enable file logging: there is no logs folder.");
+        Log.e(TAG, "Can't enable file logging: no logs folder.");
         return false;
       }
       else
@@ -189,19 +200,13 @@ public class LoggerFactory
   @NonNull
   public synchronized Logger getLogger(@NonNull Type type)
   {
-    BaseLogger logger = mLoggers.get(type);
+    Logger logger = mLoggers.get(type);
     if (logger == null)
     {
-      logger = createLogger(type);
+      logger = new Logger(type, getFileLoggerExecutor());
       mLoggers.put(type, logger);
     }
     return logger;
-  }
-
-  private synchronized void updateLoggers()
-  {
-    for (Type type : mLoggers.keySet())
-      mLoggers.get(type).setStrategy(createLoggerStrategy(type));
   }
 
   /**
@@ -213,32 +218,18 @@ public class LoggerFactory
 
     if (ensureLogsFolder() == null)
     {
-      Log.e(TAG, "Can't send logs: there is no logs folder.");
+      Log.e(TAG, "Can't zip log files: no logs folder.");
       listener.onCompleted(false, null);
       return;
     }
 
+    Log.i(TAG, "Zipping log files in " + mLogsFolder);
     final Runnable task = new ZipLogsTask(mLogsFolder, mLogsFolder + ".zip", listener);
     getFileLoggerExecutor().execute(task);
   }
 
   @NonNull
-  private BaseLogger createLogger(@NonNull Type type)
-  {
-    return new BaseLogger(createLoggerStrategy(type));
-  }
-
-  @NonNull
-  private LoggerStrategy createLoggerStrategy(@NonNull Type type)
-  {
-    if (isFileLoggingEnabled)
-      return new FileLoggerStrategy(type.name().toLowerCase() + ".log", getFileLoggerExecutor());
-
-    return new LogCatStrategy(BuildConfig.DEBUG);
-  }
-
-  @NonNull
-  private synchronized ExecutorService getFileLoggerExecutor()
+  private ExecutorService getFileLoggerExecutor()
   {
     if (mFileLoggerExecutor == null)
       mFileLoggerExecutor = Executors.newSingleThreadExecutor();
@@ -272,27 +263,28 @@ public class LoggerFactory
   /**
    * NOTE: initFileLogging() must be called before.
    */
-  public void writeSystemInformation(@NonNull final FileWriter fw) throws IOException
+  String getSystemInformation()
   {
     assert mApplication != null : "mApplication must be initialized first by calling initFileLogging()";
 
-    fw.write("Android version: " + Build.VERSION.SDK_INT);
-    fw.write("\nDevice: " + Utils.getFullDeviceModel());
-    fw.write("\nApp version: " + BuildConfig.APPLICATION_ID + " " + BuildConfig.VERSION_NAME);
-    fw.write("\nLocale: " + Locale.getDefault());
-    fw.write("\nNetworks: ");
+    String res = "Android version: " + Build.VERSION.SDK_INT +
+                 "\nDevice: " + Utils.getFullDeviceModel() +
+                 "\nApp version: " + BuildConfig.APPLICATION_ID + " " + BuildConfig.VERSION_NAME +
+                 "\nLocale: " + Locale.getDefault() +
+                 "\nNetworks: ";
     final ConnectivityManager manager = (ConnectivityManager) mApplication.getSystemService(Context.CONNECTIVITY_SERVICE);
     if (manager != null)
       // TODO: getAllNetworkInfo() is deprecated, for alternatives check
       // https://stackoverflow.com/questions/32547006/connectivitymanager-getnetworkinfoint-deprecated
       for (NetworkInfo info : manager.getAllNetworkInfo())
-        fw.write(info.toString());
-    fw.write("\nLocation providers: ");
+        res += "\n\t" + info.toString();
+    res += "\nLocation providers: ";
     final LocationManager locMngr = (android.location.LocationManager) mApplication.getSystemService(Context.LOCATION_SERVICE);
     if (locMngr != null)
-      for (String provider: locMngr.getProviders(true))
-        fw.write(provider + " ");
-    fw.write("\n\n");
+      for (String provider : locMngr.getProviders(true))
+        res += provider + " ";
+
+    return res + "\n\n";
   }
 
   private static native void nativeToggleCoreDebugLogs(boolean enabled);

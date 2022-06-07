@@ -1,9 +1,5 @@
 package com.mapswithme.util.log;
 
-import android.app.Application;
-import android.text.TextUtils;
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -61,7 +57,7 @@ class ZipLogsTask implements Runnable
     }
     catch (Exception e)
     {
-      Log.e(TAG, "Failed to zip file '" + sourcePath + "' to location '" + toLocation + "'", e);
+      LOGGER.e(TAG, "Failed to zip file '" + sourcePath + "' to location '" + toLocation + "'", e);
       return false;
     }
     return true;
@@ -101,14 +97,6 @@ class ZipLogsTask implements Runnable
     }
   }
 
-  private static String getLastPathComponent(String filePath)
-  {
-    String[] segments = filePath.split(File.separator);
-    if (segments.length == 0)
-      return "";
-    return segments[segments.length - 1];
-  }
-
   private void saveSystemLogcat(String path)
   {
     final String cmd = "logcat -d -v time";
@@ -129,7 +117,7 @@ class ZipLogsTask implements Runnable
         InputStreamReader reader = new InputStreamReader(process.getInputStream());
         FileWriter writer = new FileWriter(file))
     {
-      LoggerFactory.INSTANCE.writeSystemInformation(writer);
+      writer.write(LoggerFactory.INSTANCE.getSystemInformation());
       char[] buffer = new char[10000];
       do
       {
@@ -141,7 +129,6 @@ class ZipLogsTask implements Runnable
     }
     catch (Throwable e)
     {
-      LoggerFactory.INSTANCE.getLogger(LoggerFactory.Type.MISC);
       LOGGER.e(TAG, "Failed to save system logcat to " + path, e);
     }
   }
