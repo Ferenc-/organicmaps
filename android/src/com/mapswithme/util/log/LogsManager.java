@@ -1,5 +1,6 @@
 package com.mapswithme.util.log;
 
+import android.app.ActivityManager;
 import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -7,6 +8,7 @@ import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.Debug;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -18,9 +20,6 @@ import com.mapswithme.util.Utils;
 import net.jcip.annotations.ThreadSafe;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.EnumMap;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,38 +32,28 @@ import java.util.concurrent.Executors;
  * (file loggers call getEnabledLogsFolder() in preparation to write).
  */
 @ThreadSafe
-public class LoggerFactory
+public class LogsManager
 {
-  public enum Type
-  {
-    MISC, LOCATION, TRAFFIC, GPS_TRACKING, TRACK_RECORDER, ROUTING, NETWORK, STORAGE, DOWNLOADER,
-    CORE, THIRD_PARTY, BILLING
-  }
-
   public interface OnZipCompletedListener
   {
     // Called from the logger thread.
     public void onCompleted(final boolean success, @Nullable final String zipPath);
   }
 
-  private final static String TAG = LoggerFactory.class.getSimpleName();
-  private final static String CORE_TAG = "OMcore";
+  private final static String TAG = LogsManager.class.getSimpleName();
 
-  public final static LoggerFactory INSTANCE = new LoggerFactory();
+  public final static LogsManager INSTANCE = new LogsManager();
+  final static ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
-  @NonNull
-  private final EnumMap<Type, Logger> mLoggers = new EnumMap<>(Type.class);
-  @Nullable
-  private ExecutorService mFileLoggerExecutor;
   @Nullable
   private Application mApplication;
   private boolean mIsFileLoggingEnabled = false;
   @Nullable
   private String mLogsFolder;
 
-  private LoggerFactory()
+  private LogsManager()
   {
-    Log.i(LoggerFactory.class.getSimpleName(), "Logging started");
+    Log.i(LogsManager.TAG, "Logging started");
   }
 
   public synchronized void initFileLogging(@NonNull Application application)
@@ -197,18 +186,6 @@ public class LoggerFactory
     return true;
   }
 
-  @NonNull
-  public synchronized Logger getLogger(@NonNull Type type)
-  {
-    Logger logger = mLoggers.get(type);
-    if (logger == null)
-    {
-      logger = new Logger(type, getFileLoggerExecutor());
-      mLoggers.put(type, logger);
-    }
-    return logger;
-  }
-
   /**
    * NOTE: initFileLogging() must be called before.
    */
@@ -225,44 +202,13 @@ public class LoggerFactory
 
     Log.i(TAG, "Zipping log files in " + mLogsFolder);
     final Runnable task = new ZipLogsTask(mLogsFolder, mLogsFolder + ".zip", listener);
-    getFileLoggerExecutor().execute(task);
-  }
-
-  @NonNull
-  private ExecutorService getFileLoggerExecutor()
-  {
-    if (mFileLoggerExecutor == null)
-      mFileLoggerExecutor = Executors.newSingleThreadExecutor();
-    return mFileLoggerExecutor;
-  }
-
-  // Called from JNI.
-  @SuppressWarnings("unused")
-  private static void logCoreMessage(int level, String msg)
-  {
-    final Logger logger = INSTANCE.getLogger(Type.CORE);
-    switch (level)
-    {
-      case Log.DEBUG:
-        logger.d(CORE_TAG, msg);
-        break;
-      case Log.INFO:
-        logger.i(CORE_TAG, msg);
-        break;
-      case Log.WARN:
-        logger.w(CORE_TAG, msg);
-        break;
-      case Log.ERROR:
-        logger.e(CORE_TAG, msg);
-        break;
-      default:
-        logger.v(CORE_TAG, msg);
-    }
+    EXECUTOR.execute(task);
   }
 
   /**
    * NOTE: initFileLogging() must be called before.
    */
+  @NonNull
   String getSystemInformation()
   {
     assert mApplication != null : "mApplication must be initialized first by calling initFileLogging()";
@@ -285,6 +231,42 @@ public class LoggerFactory
         res += provider + " ";
 
     return res + "\n\n";
+  }
+
+  // Called from JNI.
+  @SuppressWarnings("unused")
+  @NonNull
+  public static String getMemoryInfo(@NonNull Context context)
+  {
+    final Debug.MemoryInfo debugMI = new Debug.MemoryInfo();
+    Debug.getMemoryInfo(debugMI);
+    final ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+    final ActivityManager activityManager =
+        (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+    activityManager.getMemoryInfo(mi);
+
+    StringBuilder log = new StringBuilder("Memory info: ");
+    log.append(" Debug.getNativeHeapSize() = ")
+       .append(Debug.getNativeHeapSize() / 1024)
+       .append("KB; Debug.getNativeHeapAllocatedSize() = ")
+       .append(Debug.getNativeHeapAllocatedSize() / 1024)
+       .append("KB; Debug.getNativeHeapFreeSize() = ")
+       .append(Debug.getNativeHeapFreeSize() / 1024)
+       .append("KB; debugMI.getTotalPrivateDirty() = ")
+       .append(debugMI.getTotalPrivateDirty())
+       .append("KB; debugMI.getTotalPss() = ")
+       .append(debugMI.getTotalPss())
+       .append("KB; mi.availMem = ")
+       .append(mi.availMem / 1024)
+       .append("KB; mi.threshold = ")
+       .append(mi.threshold / 1024)
+       .append("KB; mi.lowMemory = ")
+       .append(mi.lowMemory);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
+    {
+      log.append(" mi.totalMem = ").append(mi.totalMem / 1024).append("KB;");
+    }
+    return log.toString();
   }
 
   private static native void nativeToggleCoreDebugLogs(boolean enabled);

@@ -14,85 +14,103 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.concurrent.Executor;
 
 @ThreadSafe
 public class Logger
 {
   private static final String TAG = Logger.class.getSimpleName();
+
+  public enum Scope
+  {
+    MAIN, LOCATION, TRAFFIC, GPS_TRACKING, TRACK_RECORDER, ROUTING, NETWORK, STORAGE, DOWNLOADER,
+    CORE, THIRD_PARTY
+  }
+
+  private final static Logger CORE_LOGGER = new Logger(Scope.CORE, "OMcore");
+  // Called from JNI to proxy native code logging.
+  @SuppressWarnings("unused")
+  private static void logCoreMessage(int level, String msg)
+  {
+    CORE_LOGGER.log(level, msg, null);
+  }
+
   @NonNull
   private final String mFileName;
   @NonNull
-  private final Executor mExecutor;
+  private final String mTag;
 
-  public Logger(@NonNull LoggerFactory.Type type, @NonNull Executor executor)
+  public Logger(@NonNull Scope scope, @NonNull Class<?> cls)
   {
-    mFileName = type.toString().toLowerCase() + ".log";
-    mExecutor = executor;
+    this(scope, cls.getSimpleName());
   }
 
-  public void v(String tag, String msg)
+  private Logger(@NonNull Scope scope, @NonNull String tag)
   {
-    log(Log.VERBOSE, tag, msg, null);
+    mFileName = scope.toString().toLowerCase() + ".log";
+    mTag = tag;
   }
 
-  public void v(String tag, String msg, Throwable tr)
+  public void v(String msg)
   {
-    log(Log.VERBOSE, tag, msg, tr);
+    log(Log.VERBOSE, msg, null);
   }
 
-  public void d(String tag, String msg)
+  public void v(String msg, Throwable tr)
   {
-    log(Log.DEBUG, tag, msg, null);
+    log(Log.VERBOSE, msg, tr);
   }
 
-  public void d(String tag, String msg, Throwable tr)
+  public void d(String msg)
   {
-    log(Log.DEBUG, tag, msg, tr);
+    log(Log.DEBUG, msg, null);
   }
 
-  public void i(String tag, String msg)
+  public void d(String msg, Throwable tr)
   {
-    log(Log.INFO, tag, msg, null);
+    log(Log.DEBUG, msg, tr);
   }
 
-  public void i(String tag, String msg, Throwable tr)
+  public void i(String msg)
   {
-
-    log(Log.INFO, tag, msg, tr);
+    log(Log.INFO, msg, null);
   }
 
-  public void w(String tag, String msg)
+  public void i(String msg, Throwable tr)
   {
-    log(Log.WARN, tag, msg, null);
+    log(Log.INFO, msg, tr);
   }
 
-  public void w(String tag, String msg, Throwable tr)
+  public void w(String msg)
   {
-    log(Log.WARN, tag, msg, tr);
+    log(Log.WARN, msg, null);
   }
 
-  public void e(String tag, String msg)
+  public void w(String msg, Throwable tr)
   {
-    log(Log.ERROR, tag, msg, null);
+    log(Log.WARN, msg, tr);
   }
 
-  public void e(String tag, String msg, Throwable tr)
+  public void e(String msg)
   {
-    log(Log.ERROR, tag, msg, tr);
+    log(Log.ERROR, msg, null);
   }
 
-  public void log(int level, @NonNull String tag, @NonNull String msg, @Nullable Throwable tr)
+  public void e(String msg, Throwable tr)
   {
-    final String logsFolder = LoggerFactory.INSTANCE.getEnabledLogsFolder();
+    log(Log.ERROR, msg, tr);
+  }
+
+  public void log(int level, @NonNull String msg, @Nullable Throwable tr)
+  {
+    final String logsFolder = LogsManager.INSTANCE.getEnabledLogsFolder();
     if (logsFolder != null)
     {
-      final String data = getLevelChar(level) + "/" + tag + ": " + msg + (tr != null ? '\n' + Log.getStackTraceString(tr) : "");
-      mExecutor.execute(new WriteTask(logsFolder + File.separator + mFileName,
-                                      data, Thread.currentThread().getName()));
+      final String data = getLevelChar(level) + "/" + mTag + ": " + msg + (tr != null ? '\n' + Log.getStackTraceString(tr) : "");
+      LogsManager.EXECUTOR.execute(new WriteTask(logsFolder + File.separator + mFileName,
+                                                 data, Thread.currentThread().getName()));
     }
     else if (BuildConfig.DEBUG || level >= Log.INFO)
-      Log.println(level, tag, msg + (tr != null ? '\n' + Log.getStackTraceString(tr) : ""));
+      Log.println(level, mTag, msg + (tr != null ? '\n' + Log.getStackTraceString(tr) : ""));
   }
 
   private char getLevelChar(int level)
@@ -141,7 +159,7 @@ public class Logger
         if (!file.exists() || file.length() > MAX_SIZE)
         {
           fw = new FileWriter(file, false);
-          fw.write(LoggerFactory.INSTANCE.getSystemInformation());
+          fw.write(LogsManager.INSTANCE.getSystemInformation());
         }
         else
         {
