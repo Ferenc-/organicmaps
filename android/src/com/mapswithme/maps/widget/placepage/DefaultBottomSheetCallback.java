@@ -1,20 +1,17 @@
 package com.mapswithme.maps.widget.placepage;
 
-import static com.mapswithme.maps.widget.placepage.PlacePageUtils.isAnchoredState;
-import static com.mapswithme.maps.widget.placepage.PlacePageUtils.isExpandedState;
-
 import android.view.View;
 
 import androidx.annotation.NonNull;
-
 import com.mapswithme.util.log.Logger;
-import com.mapswithme.util.log.LoggerFactory;
 import com.trafi.anchorbottomsheetbehavior.AnchorBottomSheetBehavior;
+
+import static com.mapswithme.maps.widget.placepage.PlacePageUtils.isAnchoredState;
+import static com.mapswithme.maps.widget.placepage.PlacePageUtils.isExpandedState;
 
 public class DefaultBottomSheetCallback extends AnchorBottomSheetBehavior.BottomSheetCallback
 {
-  private static final Logger LOGGER = LoggerFactory.INSTANCE.getLogger(LoggerFactory.Type.MISC);
-  private static final String TAG = DefaultBottomSheetCallback.class.getSimpleName();
+  private static final Logger LOGGER = new Logger(Logger.Scope.MAIN, DefaultBottomSheetCallback.class);
   @NonNull
   private final BottomSheetChangedListener mSheetChangedListener;
 
@@ -26,8 +23,8 @@ public class DefaultBottomSheetCallback extends AnchorBottomSheetBehavior.Bottom
   @Override
   public void onStateChanged(@NonNull View bottomSheet, int oldState, int newState)
   {
-    LOGGER.d(TAG, "State change, new = " + PlacePageUtils.toString(newState)
-                  + " old = " + PlacePageUtils.toString(oldState));
+    LOGGER.d("State change, new = " + PlacePageUtils.toString(newState) +
+             " old = " + PlacePageUtils.toString(oldState));
     if (PlacePageUtils.isSettlingState(newState) || PlacePageUtils.isDraggingState(newState))
     {
       return;

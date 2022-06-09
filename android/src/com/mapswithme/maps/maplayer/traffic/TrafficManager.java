@@ -3,10 +3,8 @@ package com.mapswithme.maps.maplayer.traffic;
 import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import com.mapswithme.maps.base.Initializable;
 import com.mapswithme.util.log.Logger;
-import com.mapswithme.util.log.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,9 +13,8 @@ import java.util.List;
 public enum TrafficManager implements Initializable<Void>
 {
   INSTANCE;
-  private final static String TAG = TrafficManager.class.getSimpleName();
-  @NonNull
-  private final Logger mLogger = LoggerFactory.INSTANCE.getLogger(LoggerFactory.Type.TRAFFIC);
+
+  private static final Logger LOGGER = new Logger(Logger.Scope.TRAFFIC, TrafficManager.class);
 
   @NonNull
   private final TrafficState.StateChangeListener mStateChangeListener = new TrafficStateListener();
@@ -33,7 +30,7 @@ public enum TrafficManager implements Initializable<Void>
   @Override
   public void initialize(@Nullable Void aVoid)
   {
-    mLogger.d(TAG, "Initialization of traffic manager and setting the listener for traffic state changes");
+    LOGGER.d("Initialization of traffic manager and setting the listener for traffic state changes");
     TrafficState.nativeSetListener(mStateChangeListener);
     mInitialized = true;
   }
@@ -56,7 +53,7 @@ public enum TrafficManager implements Initializable<Void>
 
   private void enable()
   {
-    mLogger.d(TAG, "Enable traffic");
+    LOGGER.d("Enable traffic");
     TrafficState.nativeEnable();
   }
 
@@ -64,7 +61,7 @@ public enum TrafficManager implements Initializable<Void>
   {
     checkInitialization();
 
-    mLogger.d(TAG, "Disable traffic");
+    LOGGER.d("Disable traffic");
     TrafficState.nativeDisable();
   }
   
@@ -83,7 +80,7 @@ public enum TrafficManager implements Initializable<Void>
       throw new IllegalStateException("A callback '" + callback
                                       + "' is already attached. Check that the 'detachAll' method was called.");
     }
-    mLogger.d(TAG, "Attach callback '" + callback + "'");
+    LOGGER.d("Attach callback '" + callback + "'");
     mCallbacks.add(callback);
     postPendingState();
   }
@@ -99,13 +96,13 @@ public enum TrafficManager implements Initializable<Void>
 
     if (mCallbacks.isEmpty())
     {
-      mLogger.w(TAG, "There are no attached callbacks. Invoke the 'detachAll' method " +
-                     "only when it's really needed!", new Throwable());
+      LOGGER.w("There are no attached callbacks. Invoke the 'detachAll' method " +
+               "only when it's really needed!", new Throwable());
       return;
     }
 
     for (TrafficCallback callback : mCallbacks)
-      mLogger.d(TAG, "Detach callback '" + callback + "'");
+      LOGGER.d("Detach callback '" + callback + "'");
     mCallbacks.clear();
   }
 
@@ -135,8 +132,8 @@ public enum TrafficManager implements Initializable<Void>
     public void onTrafficStateChanged(int index)
     {
       TrafficState newTrafficState = TrafficState.values()[index];
-      mLogger.d(TAG, "onTrafficStateChanged current state = " + mState
-                     + " new value = " + newTrafficState);
+      LOGGER.d("onTrafficStateChanged current state = " + mState +
+               " new value = " + newTrafficState);
 
       if (mState == newTrafficState)
         return;

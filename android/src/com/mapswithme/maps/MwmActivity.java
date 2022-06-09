@@ -26,7 +26,6 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
-
 import com.mapswithme.maps.Framework.PlacePageActivationListener;
 import com.mapswithme.maps.api.ParsedMwmRequest;
 import com.mapswithme.maps.background.AppBackgroundTracker;
@@ -78,7 +77,6 @@ import com.mapswithme.maps.search.SearchFragment;
 import com.mapswithme.maps.settings.DrivingOptionsActivity;
 import com.mapswithme.maps.settings.RoadType;
 import com.mapswithme.maps.settings.SettingsActivity;
-import com.mapswithme.maps.settings.StoragePathManager;
 import com.mapswithme.maps.settings.UnitLocale;
 import com.mapswithme.maps.sound.TtsPlayer;
 import com.mapswithme.maps.widget.menu.MainMenu;
@@ -97,8 +95,6 @@ import com.mapswithme.util.UiUtils;
 import com.mapswithme.util.Utils;
 import com.mapswithme.util.bottomsheet.MenuBottomSheetFragment;
 import com.mapswithme.util.bottomsheet.MenuBottomSheetItem;
-import com.mapswithme.util.log.Logger;
-import com.mapswithme.util.log.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -124,9 +120,6 @@ public class MwmActivity extends BaseMwmFragmentActivity
                NoConnectionListener,
                MapWidgetOffsetsProvider
 {
-  private final Logger mLogger = LoggerFactory.INSTANCE.getLogger(LoggerFactory.Type.MISC);
-  private static final String TAG = MwmActivity.class.getSimpleName();
-
   public static final String EXTRA_TASK = "map_task";
   public static final String EXTRA_LAUNCH_BY_DEEP_LINK = "launch_by_deep_link";
   public static final String EXTRA_BACK_URL = "back_url";

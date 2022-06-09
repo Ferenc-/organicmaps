@@ -13,7 +13,6 @@ import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 import com.mapswithme.maps.BuildConfig;
 import com.mapswithme.util.log.Logger;
-import com.mapswithme.util.log.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,8 +29,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class StorageUtils
 {
-  private static final Logger LOGGER = LoggerFactory.INSTANCE.getLogger(LoggerFactory.Type.STORAGE);
-  private final static String TAG = StorageUtils.class.getSimpleName();
+  private static final Logger LOGGER = new Logger(Logger.Scope.STORAGE, StorageUtils.class);
 
   @NonNull
   public static String getApkPath(@NonNull Application application)
@@ -43,7 +41,7 @@ public class StorageUtils
     }
     catch (final PackageManager.NameNotFoundException e)
     {
-      LOGGER.e(TAG, "Can't get apk path from PackageManager", e);
+      LOGGER.e("Can't get apk path from PackageManager", e);
       return "";
     }
   }
@@ -80,7 +78,7 @@ public class StorageUtils
     if (!directory.exists() && !directory.mkdirs())
     {
       final String errMsg = "Can't create directory " + path;
-      LOGGER.e(TAG, errMsg);
+      LOGGER.e(errMsg);
       CrashlyticsUtils.INSTANCE.logException(new IOException(errMsg));
       return false;
     }
@@ -191,7 +189,7 @@ public class StorageUtils
     final File[] list = dir.listFiles();
     if (list == null)
     {
-      LOGGER.w(TAG, "getDirSizeRecursively dirFiles returned null");
+      LOGGER.w("getDirSizeRecursively dirFiles returned null");
       return 0;
     }
 
@@ -271,7 +269,7 @@ public class StorageUtils
           final String docId = cur.getString(0);
           final String name = cur.getString(1);
           final String mime = cur.getString(2);
-          LOGGER.d(TAG, "docId: " + docId + ", name: " + name + ", mime: " + mime);
+          LOGGER.d("docId: " + docId + ", name: " + name + ", mime: " + mime);
 
           if (mime.equals(DocumentsContract.Document.MIME_TYPE_DIR))
           {

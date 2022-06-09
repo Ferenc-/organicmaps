@@ -15,7 +15,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.util.Pair;
 import androidx.fragment.app.FragmentActivity;
-
 import com.mapswithme.maps.Framework;
 import com.mapswithme.maps.MwmApplication;
 import com.mapswithme.maps.R;
@@ -29,7 +28,6 @@ import com.mapswithme.util.StringUtils;
 import com.mapswithme.util.Utils;
 import com.mapswithme.util.concurrency.UiThread;
 import com.mapswithme.util.log.Logger;
-import com.mapswithme.util.log.LoggerFactory;
 
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 @androidx.annotation.UiThread
 public class RoutingController implements Initializable<Void>
 {
-  private static final String TAG = RoutingController.class.getSimpleName();
+  private static final Logger LOGGER = new Logger(Logger.Scope.ROUTING, RoutingController.class);
 
   private enum State
   {
@@ -85,7 +83,7 @@ public class RoutingController implements Initializable<Void>
 
   private static final int NO_WAITING_POI_PICK = -1;
   private static final RoutingController sInstance = new RoutingController();
-  private final Logger mLogger = LoggerFactory.INSTANCE.getLogger(LoggerFactory.Type.ROUTING);
+
   @Nullable
   private Container mContainer;
 
@@ -116,7 +114,7 @@ public class RoutingController implements Initializable<Void>
     @Override
     public void onRoutingEvent(final int resultCode, @Nullable final String[] missingMaps)
     {
-      mLogger.d(TAG, "onRoutingEvent(resultCode: " + resultCode + ")");
+      LOGGER.d("onRoutingEvent(resultCode: " + resultCode + ")");
       mLastResultCode = resultCode;
       mLastMissingMaps = missingMaps;
       mContainsCachedResult = true;
@@ -224,7 +222,7 @@ public class RoutingController implements Initializable<Void>
 
   private void setState(State newState)
   {
-    mLogger.d(TAG, "[S] State: " + mState + " -> " + newState + ", BuildState: " + mBuildState);
+    LOGGER.d("[S] State: " + mState + " -> " + newState + ", BuildState: " + mBuildState);
     mState = newState;
 
     if (mContainer != null)
@@ -233,7 +231,7 @@ public class RoutingController implements Initializable<Void>
 
   private void setBuildState(BuildState newState)
   {
-    mLogger.d(TAG, "[B] State: " + mState + ", BuildState: " + mBuildState + " -> " + newState);
+    LOGGER.d("[B] State: " + mState + ", BuildState: " + mBuildState + " -> " + newState);
     mBuildState = newState;
 
     if (mBuildState == BuildState.BUILT && !MapObject.isOfType(MapObject.MY_POSITION, getStartPoint()))
@@ -320,7 +318,7 @@ public class RoutingController implements Initializable<Void>
   {
     Framework.nativeRemoveRoute();
 
-    mLogger.d(TAG, "build");
+    LOGGER.d("build");
     mLastBuildProgress = 0;
 
     setBuildState(BuildState.BUILDING);
@@ -396,7 +394,7 @@ public class RoutingController implements Initializable<Void>
 
   public void prepare(@Nullable MapObject startPoint, @Nullable MapObject endPoint, boolean fromApi)
   {
-    mLogger.d(TAG, "prepare (" + (endPoint == null ? "route)" : "p2p)"));
+    LOGGER.d("prepare (" + (endPoint == null ? "route)" : "p2p)"));
 
     if (!Config.isRoutingDisclaimerAccepted())
     {
@@ -450,7 +448,7 @@ public class RoutingController implements Initializable<Void>
 
   public void start()
   {
-    mLogger.d(TAG, "start");
+    LOGGER.d("start");
 
     // This saving is needed just for situation when the user starts navigation
     // and then app crashes. So, the previous route will be restored on the next app launch.
@@ -599,7 +597,7 @@ public class RoutingController implements Initializable<Void>
 
   private void cancelInternal()
   {
-    mLogger.d(TAG, "cancelInternal");
+    LOGGER.d("cancelInternal");
 
     //noinspection WrongConstant
     mWaitingPoiPickType = NO_WAITING_POI_PICK;
@@ -616,7 +614,7 @@ public class RoutingController implements Initializable<Void>
   {
     if (isPlanning())
     {
-      mLogger.d(TAG, "cancel: planning");
+      LOGGER.d("cancel: planning");
 
       cancelInternal();
       cancelPlanning();
@@ -625,7 +623,7 @@ public class RoutingController implements Initializable<Void>
 
     if (isNavigating())
     {
-      mLogger.d(TAG, "cancel: navigating");
+      LOGGER.d("cancel: navigating");
 
       cancelInternal();
       cancelNavigation();
@@ -636,7 +634,7 @@ public class RoutingController implements Initializable<Void>
       return true;
     }
 
-    mLogger.d(TAG, "cancel: none");
+    LOGGER.d("cancel: none");
     return false;
   }
 
@@ -826,12 +824,12 @@ public class RoutingController implements Initializable<Void>
 
   private boolean setStartFromMyPosition()
   {
-    mLogger.d(TAG, "setStartFromMyPosition");
+    LOGGER.d("setStartFromMyPosition");
 
     MapObject my = LocationHelper.INSTANCE.getMyPosition();
     if (my == null)
     {
-      mLogger.d(TAG, "setStartFromMyPosition: no my position - skip");
+      LOGGER.d("setStartFromMyPosition: no my position - skip");
       return false;
     }
 
@@ -851,7 +849,7 @@ public class RoutingController implements Initializable<Void>
   @SuppressWarnings("Duplicates")
   public boolean setStartPoint(@Nullable MapObject point)
   {
-    mLogger.d(TAG, "setStartPoint");
+    LOGGER.d("setStartPoint");
     MapObject startPoint = getStartPoint();
     MapObject endPoint = getEndPoint();
     boolean isSamePoint = MapObject.same(startPoint, point);
@@ -864,7 +862,7 @@ public class RoutingController implements Initializable<Void>
 
     if (isSamePoint)
     {
-      mLogger.d(TAG, "setStartPoint: skip the same starting point");
+      LOGGER.d("setStartPoint: skip the same starting point");
       return false;
     }
 
@@ -872,11 +870,11 @@ public class RoutingController implements Initializable<Void>
     {
       if (startPoint == null)
       {
-        mLogger.d(TAG, "setStartPoint: skip because starting point is empty");
+        LOGGER.d("setStartPoint: skip because starting point is empty");
         return false;
       }
 
-      mLogger.d(TAG, "setStartPoint: swap with end point");
+      LOGGER.d("setStartPoint: swap with end point");
       endPoint = startPoint;
     }
 
@@ -899,7 +897,7 @@ public class RoutingController implements Initializable<Void>
   @SuppressWarnings("Duplicates")
   public boolean setEndPoint(@Nullable MapObject point)
   {
-    mLogger.d(TAG, "setEndPoint");
+    LOGGER.d("setEndPoint");
     MapObject startPoint = getStartPoint();
     MapObject endPoint = getEndPoint();
     boolean isSamePoint = MapObject.same(endPoint, point);
@@ -913,7 +911,7 @@ public class RoutingController implements Initializable<Void>
 
     if (isSamePoint)
     {
-      mLogger.d(TAG, "setEndPoint: skip the same end point");
+      LOGGER.d("setEndPoint: skip the same end point");
       return false;
     }
 
@@ -921,11 +919,11 @@ public class RoutingController implements Initializable<Void>
     {
       if (endPoint == null)
       {
-        mLogger.d(TAG, "setEndPoint: skip because end point is empty");
+        LOGGER.d("setEndPoint: skip because end point is empty");
         return false;
       }
 
-      mLogger.d(TAG, "setEndPoint: swap with starting point");
+      LOGGER.d("setEndPoint: swap with starting point");
       startPoint = endPoint;
 
     }
@@ -974,7 +972,7 @@ public class RoutingController implements Initializable<Void>
 
   private void swapPoints()
   {
-    mLogger.d(TAG, "swapPoints");
+    LOGGER.d("swapPoints");
 
     MapObject startPoint = getStartPoint();
     MapObject endPoint = getEndPoint();
@@ -990,7 +988,7 @@ public class RoutingController implements Initializable<Void>
 
   public void setRouterType(@Framework.RouterType int router)
   {
-    mLogger.d(TAG, "setRouterType: " + mLastRouterType + " -> " + router);
+    LOGGER.d("setRouterType: " + mLastRouterType + " -> " + router);
 
     // Repeating tap on Taxi icon should trigger the route building always,
     // because it may be "No internet connection, try later" case
