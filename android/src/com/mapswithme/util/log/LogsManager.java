@@ -16,7 +16,6 @@ import androidx.annotation.Nullable;
 import com.mapswithme.maps.BuildConfig;
 import com.mapswithme.maps.MwmApplication;
 import com.mapswithme.maps.R;
-import com.mapswithme.util.Utils;
 import net.jcip.annotations.ThreadSafe;
 
 import java.io.File;
@@ -62,9 +61,7 @@ public class LogsManager
     mApplication = application;
 
     final SharedPreferences prefs = MwmApplication.prefs(mApplication);
-    // File logging is enabled by default for beta builds.
-    mIsFileLoggingEnabled = prefs.getBoolean(mApplication.getString(R.string.pref_enable_logging),
-                                             BuildConfig.BUILD_TYPE.equals("beta"));
+    mIsFileLoggingEnabled = prefs.getBoolean(mApplication.getString(R.string.pref_enable_logging), false);
     Log.i(TAG, "isFileLoggingEnabled preference: " + mIsFileLoggingEnabled);
     mIsFileLoggingEnabled = mIsFileLoggingEnabled && ensureLogsFolder() != null;
 
@@ -131,6 +128,11 @@ public class LogsManager
       Log.e(TAG, "Can't write to a logs folder " + path);
       return false;
     }
+    if (dir.getUsableSpace() < 256)
+    {
+      Log.e(TAG, "There is no free space on storage with a logs folder " + path);
+      return false;
+    }
     return true;
   }
 
@@ -149,6 +151,7 @@ public class LogsManager
   private void switchFileLoggingEnabled(boolean enabled)
   {
     mIsFileLoggingEnabled = enabled;
+    // Only Debug builds log DEBUG level to Android system log.
     nativeToggleCoreDebugLogs(enabled || BuildConfig.DEBUG);
     MwmApplication.prefs(mApplication)
                   .edit()
@@ -213,8 +216,12 @@ public class LogsManager
   {
     assert mApplication != null : "mApplication must be initialized first by calling initFileLogging()";
 
+    String model = Build.MODEL;
+    if (!model.startsWith(Build.MANUFACTURER))
+      model = Build.MANUFACTURER + " " + model;
+
     String res = "Android version: " + Build.VERSION.SDK_INT +
-                 "\nDevice: " + Utils.getFullDeviceModel() +
+                 "\nDevice: " + model +
                  "\nApp version: " + BuildConfig.APPLICATION_ID + " " + BuildConfig.VERSION_NAME +
                  "\nLocale: " + Locale.getDefault() +
                  "\nNetworks: ";
@@ -241,8 +248,7 @@ public class LogsManager
     final Debug.MemoryInfo debugMI = new Debug.MemoryInfo();
     Debug.getMemoryInfo(debugMI);
     final ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
-    final ActivityManager activityManager =
-        (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+    final ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
     activityManager.getMemoryInfo(mi);
 
     StringBuilder log = new StringBuilder("Memory info: ");
@@ -261,11 +267,10 @@ public class LogsManager
        .append("KB; mi.threshold = ")
        .append(mi.threshold / 1024)
        .append("KB; mi.lowMemory = ")
-       .append(mi.lowMemory);
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
-    {
-      log.append(" mi.totalMem = ").append(mi.totalMem / 1024).append("KB;");
-    }
+       .append(mi.lowMemory)
+       .append("; mi.totalMem = ")
+       .append(mi.totalMem / 1024)
+       .append("KB;");
     return log.toString();
   }
 

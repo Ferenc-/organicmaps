@@ -106,6 +106,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * }
  * </pre>
  */
+//TODO: is it used / needed still?
 public class ViewServer implements Runnable {
     /**
      * The default port used to start view servers.

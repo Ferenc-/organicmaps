@@ -38,6 +38,8 @@ public class Logger
   private final String mFileName;
   @NonNull
   private final String mTag;
+  @NonNull
+  private final String mScopedTag;
 
   public Logger(@NonNull Scope scope, @NonNull Class<?> cls)
   {
@@ -48,6 +50,7 @@ public class Logger
   {
     mFileName = scope.toString().toLowerCase() + ".log";
     mTag = tag;
+    mScopedTag = scope + "/" + tag;
   }
 
   public void v(String msg)
@@ -110,7 +113,12 @@ public class Logger
                                                  data, Thread.currentThread().getName()));
     }
     else if (BuildConfig.DEBUG || level >= Log.INFO)
-      Log.println(level, mTag, msg + (tr != null ? '\n' + Log.getStackTraceString(tr) : ""));
+    {
+      // Only Debug builds log DEBUG level to Android system log.
+      if (tr != null)
+        msg += '\n' + Log.getStackTraceString(tr);
+      Log.println(level, mScopedTag, msg);
+    }
   }
 
   private char getLevelChar(int level)
