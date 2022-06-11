@@ -152,6 +152,7 @@ public class SearchFragment extends BaseMwmFragment
   private FloatingActionButton mShowOnMapFab;
 
   private SearchToolbarController mToolbarController;
+  private boolean mFromCategory = false;
 
   @SuppressWarnings("NullableProblems")
   @NonNull
@@ -348,13 +349,12 @@ public class SearchFragment extends BaseMwmFragment
     super.onDestroy();
   }
 
-  private String getQuery()
-  {
-    return mToolbarController.getQuery();
-  }
+  private String getQuery() { return mToolbarController.getQuery(); }
+  private boolean isCategory() { return mFromCategory; }
 
   void setQuery(String text)
   {
+    mFromCategory = false;
     mToolbarController.setQuery(text);
   }
 
@@ -436,12 +436,12 @@ public class SearchFragment extends BaseMwmFragment
     mLastQueryTimestamp = System.nanoTime();
 
     SearchEngine.INSTANCE.searchInteractive(
-        query, !TextUtils.isEmpty(mInitialLocale)
+        query, isCategory(), !TextUtils.isEmpty(mInitialLocale)
                ? mInitialLocale : com.mapswithme.util.Language.getKeyboardLocale(requireContext()),
         mLastQueryTimestamp, false /* isMapAndTable */);
+
     SearchEngine.INSTANCE.setQuery(query);
     Utils.navigateToParent(getActivity());
-
   }
 
   private void onSearchEnd()
@@ -479,12 +479,13 @@ public class SearchFragment extends BaseMwmFragment
     mLastQueryTimestamp = System.nanoTime();
     if (isTabletSearch())
     {
-      SearchEngine.INSTANCE.searchInteractive(requireContext(), getQuery(), mLastQueryTimestamp, true /* isMapAndTable */);
+      SearchEngine.INSTANCE.searchInteractive(requireContext(), getQuery(), isCategory(),
+              mLastQueryTimestamp, true /* isMapAndTable */);
     }
     else
     {
-      if (!SearchEngine.INSTANCE.search(requireContext(), getQuery(), mLastQueryTimestamp, mLastPosition.valid,
-                               mLastPosition.lat, mLastPosition.lon))
+      if (!SearchEngine.INSTANCE.search(requireContext(), getQuery(), isCategory(),
+              mLastQueryTimestamp, mLastPosition.valid, mLastPosition.lat, mLastPosition.lon))
       {
         return;
       }
@@ -518,6 +519,7 @@ public class SearchFragment extends BaseMwmFragment
   @Override
   public void onSearchCategorySelected(@Nullable String category)
   {
+    mFromCategory = true;
     mToolbarController.setQuery(category);
   }
 

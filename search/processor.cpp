@@ -253,7 +253,7 @@ void Processor::SetInputLocale(string const & locale)
   m_inputLocaleCode = CategoriesHolder::MapLocaleToInteger(locale);
 }
 
-void Processor::SetQuery(string const & query)
+void Processor::SetQuery(string const & query, bool categorialRequest /* = false */)
 {
   m_query = query;
   m_tokens.clear();
@@ -319,7 +319,9 @@ void Processor::SetQuery(string const & query)
   // Get preferred types to show in results.
   m_preferredTypes.clear();
   auto const tokenSlice = QuerySliceOnRawStrings<decltype(m_tokens)>(m_tokens, m_prefix);
-  m_isCategorialRequest = FillCategories(tokenSlice, GetCategoryLocales(), m_categories, m_preferredTypes);
+
+  (void)FillCategories(tokenSlice, GetCategoryLocales(), m_categories, m_preferredTypes);
+  m_isCategorialRequest = categorialRequest;
 
   if (!m_isCategorialRequest)
   {
@@ -329,6 +331,7 @@ void Processor::SetQuery(string const & query)
 
     if (isCuisineRequest)
     {
+      /// @todo So what should happen if I search some street like "burgers " :)
       m_isCategorialRequest = true;
       m_preferredTypes = ftypes::IsEatChecker::Instance().GetTypes();
     }
@@ -601,7 +604,7 @@ void Processor::Search(SearchParams const & params)
 
   SetInputLocale(params.m_inputLocale);
 
-  SetQuery(params.m_query);
+  SetQuery(params.m_query, params.m_categorialRequest);
   SetViewport(viewport);
 
   // Used to store the earliest available cancellation status:

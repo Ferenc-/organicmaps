@@ -92,6 +92,9 @@ struct SearchParams
   // Needed to highlight matching parts of search result names.
   bool m_needHighlighting = false;
 
+  /// True if you need *pure* category results, without names/addresses/etc matching.
+  bool m_categorialRequest = false;
+
   bookmarks::GroupId m_bookmarksGroupId = bookmarks::kInvalidGroupId;
 
   // Amount of time after which the search is aborted.
