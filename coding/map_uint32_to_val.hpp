@@ -110,7 +110,7 @@ public:
   /// @name Tries to get |value| for key identified by |id|.
   /// @returns false if table does not have entry for this id.
   /// @{
-  [[nodiscard]] bool Get(uint32_t id, Value & value)
+  [[nodiscard]] bool Get(uint64_t id, Value & value)
   {
     if (id >= m_ids.size() || !m_ids[id])
       return false;

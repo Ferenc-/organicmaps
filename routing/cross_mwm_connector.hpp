@@ -314,7 +314,7 @@ private:
         return m_v2 == nullptr;
     }
 
-    bool Get(uint32_t idx, WeightT & weight) const
+    bool Get(uint64_t idx, WeightT & weight) const
     {
       if (m_version < 2)
       {
