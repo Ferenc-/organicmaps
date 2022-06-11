@@ -216,28 +216,38 @@ public class LogsManager
   {
     assert mApplication != null : "mApplication must be initialized first by calling initFileLogging()";
 
-    String model = Build.MODEL;
-    if (!model.startsWith(Build.MANUFACTURER))
-      model = Build.MANUFACTURER + " " + model;
-
-    String res = "Android version: " + Build.VERSION.SDK_INT +
-                 "\nDevice: " + model +
-                 "\nApp version: " + BuildConfig.APPLICATION_ID + " " + BuildConfig.VERSION_NAME +
-                 "\nLocale: " + Locale.getDefault() +
-                 "\nNetworks: ";
+    final StringBuilder sb = new StringBuilder(512);
+    sb.append("Android version: ")
+      .append(Build.VERSION.CODENAME.equals("REL") ? Build.VERSION.RELEASE : Build.VERSION.CODENAME)
+      .append(" (API ").append(Build.VERSION.SDK_INT).append(')');
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+      sb.append(", security patch level: ").append(Build.VERSION.SECURITY_PATCH);
+    sb.append(", os.version: " + System.getProperty("os.version", "N/A"))
+      .append("\nDevice: ");
+    if (Build.MODEL.toLowerCase().startsWith(Build.MANUFACTURER.toLowerCase()))
+      sb.append(Build.MODEL);
+    else
+      sb.append(Build.MANUFACTURER).append(' ').append(Build.MODEL);
+    sb.append("\nSupported ABIs:");
+    for (String abi : Build.SUPPORTED_ABIS)
+      sb.append(' ').append(abi);
+    sb.append("\nApp version: ").append(BuildConfig.APPLICATION_ID).append(' ').append(BuildConfig.VERSION_NAME)
+      .append("\nLocale: ").append(Locale.getDefault());
+      .append("\nNetworks: ");
     final ConnectivityManager manager = (ConnectivityManager) mApplication.getSystemService(Context.CONNECTIVITY_SERVICE);
     if (manager != null)
       // TODO: getAllNetworkInfo() is deprecated, for alternatives check
       // https://stackoverflow.com/questions/32547006/connectivitymanager-getnetworkinfoint-deprecated
       for (NetworkInfo info : manager.getAllNetworkInfo())
-        res += "\n\t" + info.toString();
-    res += "\nLocation providers: ";
+        sb.append("\n\t").append(info.toString());
+    sb.append("\nLocation providers:");
     final LocationManager locMngr = (android.location.LocationManager) mApplication.getSystemService(Context.LOCATION_SERVICE);
     if (locMngr != null)
       for (String provider : locMngr.getProviders(true))
-        res += provider + " ";
+        sb.append(' ').append(provider);
+    sb.append("\n\n");
 
-    return res + "\n\n";
+    return sb.toString();
   }
 
   // Called from JNI.
@@ -251,8 +261,9 @@ public class LogsManager
     final ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
     activityManager.getMemoryInfo(mi);
 
-    StringBuilder log = new StringBuilder("Memory info: ");
-    log.append(" Debug.getNativeHeapSize() = ")
+    final StringBuilder log = new StringBuilder(256);
+    log.append("Memory info: ")
+       .append(" Debug.getNativeHeapSize() = ")
        .append(Debug.getNativeHeapSize() / 1024)
        .append("KB; Debug.getNativeHeapAllocatedSize() = ")
        .append(Debug.getNativeHeapAllocatedSize() / 1024)
@@ -271,6 +282,7 @@ public class LogsManager
        .append("; mi.totalMem = ")
        .append(mi.totalMem / 1024)
        .append("KB;");
+
     return log.toString();
   }
 
