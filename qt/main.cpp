@@ -170,10 +170,9 @@ int main(int argc, char * argv[])
     apiOpenGLES3 = app.arguments().contains("es3", Qt::CaseInsensitive);
 #elif defined(OMIM_OS_LINUX)
     // TODO: Implement proper runtime version detection in a separate commit
-    // Currently on Linux in a maximum ES2 scenario,
-    // the GL function pointers wouldn't be properly resolved anyway,
-    // so here at least a possibly successful path is chosen.
-    apiOpenGLES3 = true;
+
+    // Temporarily hardcode for GLES2 testing
+    apiOpenGLES3 = false;
 #endif
 
     if (!FLAGS_lang.empty())

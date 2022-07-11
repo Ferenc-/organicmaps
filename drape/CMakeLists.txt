@@ -178,6 +178,7 @@ target_link_libraries(${PROJECT_NAME}
   expat
   $<$<BOOL:${PLATFORM_MAC}>:-framework\ OpenGL>
   $<$<BOOL:${PLATFORM_LINUX}>:OpenGL::GL>
+  $<$<BOOL:${PLATFORM_LINUX}>:OpenGL::EGL>
 )
 
 omim_add_test_subdirectory(drape_tests)

@@ -255,9 +255,22 @@ void GLFunctions::Init(dp::ApiVersion apiVersion)
     glUnmapBufferFn = &::glUnmapBuffer;
 
 #elif defined(OMIM_OS_LINUX)
+#if defined(OMIM_OS_LINUX_HAS_EGL)
 
-    CHECK(false, ("OpenGLES2 is not yet supported"));
+    glGenVertexArraysFn = (TglGenVertexArraysFn)eglGetProcAddress("glGenVertexArraysOES");
+    glBindVertexArrayFn = (TglBindVertexArrayFn)eglGetProcAddress("glBindVertexArrayOES");
+    glDeleteVertexArrayFn = (TglDeleteVertexArrayFn)eglGetProcAddress("glDeleteVertexArraysOES");
+    glMapBufferFn = (TglMapBufferFn)eglGetProcAddress("glMapBufferOES");
+    glUnmapBufferFn = (TglUnmapBufferFn)eglGetProcAddress("glUnmapBufferOES");
+    glMapBufferRangeFn = (TglMapBufferRangeFn)eglGetProcAddress("glMapBufferRangeEXT");
+    glFlushMappedBufferRangeFn =
+        (TglFlushMappedBufferRangeFn)eglGetProcAddress("glFlushMappedBufferRangeEXT");
 
+#else
+
+    CHECK(false, ("This build was compiled without EGL, hence OpenGLES2 is not supported in this build"));
+
+#endif  // OMIM_OS_LINUX_HAS_EGL
 #elif defined(OMIM_OS_ANDROID)
 
     glGenVertexArraysFn = (TglGenVertexArraysFn)eglGetProcAddress("glGenVertexArraysOES");
@@ -1050,6 +1063,15 @@ void GLFunctions::glTexSubImage2D(int x, int y, int width, int height, glConst l
                                   glConst pixelType, void const * data)
 {
   ASSERT_NOT_EQUAL(CurrentApiVersion, dp::ApiVersion::Invalid, ());
+  /*
+  if (CurrentApiVersion == dp::ApiVersion::OpenGLES2 &&
+      layout == GL_ALPHA &&
+      pixelType == GL_UNSIGNED_BYTE)
+  {
+  	// On Linux Wayland GL_INVALID_OPERATION happens here in the
+	// next ::glTexSubImage2D call and texts will be blurry
+  }
+  */
   GLCHECK(::glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, layout, pixelType, data));
 }
 

@@ -37,6 +37,24 @@ void GLExtensionsList::Init(dp::ApiVersion apiVersion)
     SetExtension(VertexArrayObject, true);
     SetExtension(UintIndices, true);
   }
+#elif defined(OMIM_OS_LINUX)
+  SetExtension(MapBuffer, true);
+  SetExtension(UintIndices, true);
+  if (apiVersion == dp::ApiVersion::OpenGLES2)
+  {
+#if defined(OMIM_OS_LINUX_HAS_EGL)
+    SetExtension(VertexArrayObject, true); // Otherwise failure with offset
+    SetExtension(MapBuffer, true);
+    SetExtension(MapBufferRange, true);
+#else
+    CHECK(false, ("This build was compiled without EGL, hence OpenGLES2 is not supported in this build"));
+#endif  // OMIM_OS_LINUX_HAS_EGL
+  }
+  else // OpenGLES3 branch
+  {
+    SetExtension(VertexArrayObject, true);
+    SetExtension(MapBufferRange, true);
+  }
 #elif defined(OMIM_OS_WINDOWS)
   SetExtension(MapBuffer, true);
   SetExtension(UintIndices, true);

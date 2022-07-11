@@ -50,7 +50,10 @@ jobs:
           sudo apt install -y \
               ninja-build \
               qtbase5-dev \
-              libqt5svg5-dev
+              libqt5svg5-dev \
+              clang-tools-11 \
+              libegl1-mesa \
+              libegl1-mesa-dev
 
       - name: Configure
         shell: bash
@@ -101,7 +104,10 @@ jobs:
               gcc-12 \
               ninja-build \
               qtbase5-dev \
-              libqt5svg5-dev
+              libqt5svg5-dev \
+              clang-tools-11 \
+              libegl1-mesa \
+              libegl1-mesa-dev
 
       - name: Configure
         shell: bash
