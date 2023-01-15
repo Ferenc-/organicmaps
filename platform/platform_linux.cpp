@@ -25,17 +25,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <arpa/inet.h>
+#include <netdb.h>
 #include <linux/limits.h>  // PATH_MAX
-#include <netinet/in.h>
 
 #include <QStandardPaths>  // writableLocation GenericConfigLocation
 
 namespace
 {
-// Web service ip to check internet connection. Now it's a GitHub.com IP.
-char constexpr kSomeWorkingWebServer[] = "140.82.121.4";
-
 // Returns directory where binary resides, including slash at the end.
 std::optional<std::string> GetExecutableDir()
 {
@@ -171,20 +167,37 @@ std::string Platform::DeviceModel() const
 
 Platform::EConnectionType Platform::ConnectionStatus()
 {
-  int socketFd = socket(AF_INET, SOCK_STREAM, 0);
+  int socketFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   SCOPE_GUARD(closeSocket, std::bind(&close, socketFd));
   if (socketFd < 0)
     return EConnectionType::CONNECTION_NONE;
 
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(80);
-  inet_pton(AF_INET, kSomeWorkingWebServer, &addr.sin_addr);
-
-  if (connect(socketFd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0)
+  struct addrinfo hints, *result, *p;
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+  int res = getaddrinfo(METASERVER_HOST, METASERVER_SCHEME, &hints, &result);
+  if (res != 0) {
+    LOG(LDEBUG, ("getaddrinfo:", gai_strerror(res)));
     return EConnectionType::CONNECTION_NONE;
+  }
 
+  SCOPE_GUARD(freeResultAddrInfo, std::bind(&freeaddrinfo, result));
+
+  for(p = result; p != NULL; p = p->ai_next) {
+    if (connect(socketFd, p->ai_addr, p->ai_addrlen) != 0) {
+      LOG(LDEBUG, ("connect:", strerror(errno)));
+    } else {
+      break;
+    }
+  }
+
+  if (p == NULL) {
+    return EConnectionType::CONNECTION_NONE;
+  }
+
+  // TODO: Set CONNECTION_WWAN when applies
   return EConnectionType::CONNECTION_WIFI;
 }
 
