@@ -1068,8 +1068,8 @@ void GLFunctions::glTexSubImage2D(int x, int y, int width, int height, glConst l
       layout == GL_ALPHA &&
       pixelType == GL_UNSIGNED_BYTE)
   {
-  	// On Linux Wayland GL_INVALID_OPERATION happens here in the
-	// next ::glTexSubImage2D call and texts will be blurry
+    // On Linux Wayland GL_INVALID_OPERATION happens here in the
+    // next ::glTexSubImage2D call and texts will be blurry
   }
   */
   GLCHECK(::glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, layout, pixelType, data));

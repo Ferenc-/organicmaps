@@ -243,10 +243,23 @@ void MapWidget::Build()
         gl_Position = vec4(a_position.x, a_position.y, 0.0, 1.0);\
       }";
 
+    // Althoug support for `highp` in fragment shaders is not required by the ES 2 spec
+    // Qt intervenes and prepends this (on ES 2):
+    //
+    // #ifndef GL_FRAGMENT_PRECISION_HIGH
+    // #define highp mediump
+    // #endif
+    //
+    // And on desktop GLSL where the precision setting is not needed anyway,
+    // Qt defines it to empty
+    //
+    // #define highp
+    //
+    // So the shader code below should work in both cases
     fragmentSrc =
         "\
       uniform sampler2D u_sampler; \
-      varying vec2 v_texCoord; \
+      varying highp vec2 v_texCoord; \
       \
       void main() \
       { \
