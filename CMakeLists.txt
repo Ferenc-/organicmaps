@@ -320,6 +320,19 @@ if (NOT WITH_SYSTEM_PROVIDED_3PARTY)
 
   # Add protobuf library.
   add_subdirectory(${OMIM_ROOT}/3party/protobuf)
+
+  # On Linux Qt is already linked with these and linking one more time with non-system libs
+  # would lead to violating the one definition rule and undefined behaviours
+  if (NOT LINUX_DETECTED)
+    add_subdirectory(3party/freetype)
+    add_subdirectory(3party/icu)
+  endif()
+endif()
+
+# Dependencies that are unconditionally system provided
+if (LINUX_DETECTED)
+  find_package(ICU COMPONENTS uc i18n data REQUIRED)
+  find_package(Freetype REQUIRED)
 endif()
 
 add_subdirectory(3party/agg)
@@ -333,13 +346,6 @@ if (PLATFORM_DESKTOP)
   include_directories("${PROJECT_BINARY_DIR}/3party/gflags/include")
 endif()
 
-if (LINUX_DETECTED)
-  find_package(ICU COMPONENTS uc i18n data REQUIRED)
-  find_package(Freetype REQUIRED)
-else()
-  add_subdirectory(3party/freetype)
-  add_subdirectory(3party/icu)
-endif()
 
 add_subdirectory(3party/liboauthcpp)
 add_subdirectory(3party/minizip)
