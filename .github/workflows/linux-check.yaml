@@ -50,7 +50,8 @@ jobs:
           sudo apt install -y \
               ninja-build \
               qtbase5-dev \
-              libqt5svg5-dev
+              libqt5svg5-dev \
+              libcurl4-dev
 
       - name: Configure
         shell: bash
@@ -101,7 +102,8 @@ jobs:
               gcc-12 \
               ninja-build \
               qtbase5-dev \
-              libqt5svg5-dev
+              libqt5svg5-dev \
+              libcurl4-dev
 
       - name: Configure
         shell: bash

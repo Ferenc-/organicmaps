@@ -339,6 +339,7 @@ if (LINUX_DETECTED)
 else()
   add_subdirectory(3party/freetype)
   add_subdirectory(3party/icu)
+  find_package(CURL REQUIRED)
 endif()
 
 add_subdirectory(3party/liboauthcpp)

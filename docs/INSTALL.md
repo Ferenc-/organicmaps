@@ -104,7 +104,8 @@ sudo apt update && sudo apt install -y \
     libicu-dev \
     libqt5svg5-dev \
     libsqlite3-dev \
-    zlib1g-dev
+    zlib1g-dev \
+    libcurl4-dev
 ```
 
 For Ubuntu 20.04 the version of `cmake` that ships with Ubuntu is too old; a more recent version can be installed using `snap`:

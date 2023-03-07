@@ -27,10 +27,12 @@
 #include "coding/zlib.hpp"
 
 #include "base/assert.hpp"
+#include "base/scope_guard.hpp"
 #include "base/exception.hpp"
 #include "base/logging.hpp"
 #include "base/string_utils.hpp"
 
+#include <curl/curl.h>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
@@ -42,14 +44,6 @@
 #include <utility>
 #include <vector>
 
-#include <cstdio>    // popen, tmpnam
-
-#ifdef _MSC_VER
-#define popen _popen
-#define pclose _pclose
-#else
-#include <unistd.h>  // close
-#endif
 
 using namespace coding;
 
@@ -57,66 +51,6 @@ namespace
 {
 DECLARE_EXCEPTION(PipeCallError, RootException);
 
-struct ScopedRemoveFile
-{
-  ScopedRemoveFile() = default;
-  explicit ScopedRemoveFile(std::string const & fileName) : m_fileName(fileName) {}
-
-  ~ScopedRemoveFile()
-  {
-    if (!m_fileName.empty())
-      std::remove(m_fileName.c_str());
-  }
-
-  std::string m_fileName;
-};
-
-static std::string ReadFileAsString(std::string const & filePath)
-{
-  std::ifstream ifs(filePath, std::ifstream::in);
-  if (!ifs.is_open())
-    return {};
-
-  return {std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>()};
-}
-
-
-std::string RunCurl(std::string const & cmd)
-{
-  FILE * pipe = ::popen(cmd.c_str(), "r");
-  ASSERT(pipe, ());
-  std::array<char, 8 * 1024> arr;
-  std::string result;
-  size_t read;
-  do
-  {
-    read = ::fread(arr.data(), 1, arr.size(), pipe);
-    if (read > 0)
-    {
-      result.append(arr.data(), read);
-    }
-  } while (read == arr.size());
-
-  auto const err = ::pclose(pipe);
-  // Exception will be cought in RunHTTPRequest
-  if (err)
-    throw PipeCallError("", "Error " + strings::to_string(err) + " while calling " + cmd);
-
-  return result;
-}
-
-std::string GetTmpFileName()
-{
-  boost::uuids::random_generator gen;
-  boost::uuids::uuid u = gen();
-
-  std::stringstream ss;
-  ss << u;
-
-  ASSERT(!ss.str().empty(), ());
-
-  return GetPlatform().TmpPathForFile(ss.str());
-}
 
 using HeadersVector = std::vector<std::pair<std::string, std::string>>;
 
@@ -174,79 +108,129 @@ std::string Decompress(std::string const & compressed, std::string const & encod
   return decompressed;
 }
 }  // namespace
-// Used as a test stub for basic HTTP client implementation.
-// Make sure that you have curl installed in the PATH.
-// TODO(AlexZ): Not a production-ready implementation.
+
 namespace platform
 {
-// Extract HTTP headers via temporary file with -D switch.
-// HTTP status code is extracted from curl output (-w switches).
 // Redirects are handled recursively. TODO(AlexZ): avoid infinite redirects loop.
 bool HttpClient::RunHttpRequest()
 {
-  ScopedRemoveFile headers_deleter(GetTmpFileName());
-  ScopedRemoveFile body_deleter;
-  ScopedRemoveFile received_file_deleter;
+  std::string receivedHeaders;
+  FILE *outputFp = nullptr, *inputFp = nullptr;
+  struct curl_slist *curlHeaders = nullptr;
+  curl_global_init(CURL_GLOBAL_ALL);
+  CURL *curl = curl_easy_init();
+  if(!curl) { return false;}
+  auto curlCleaner = [&](){
+                            if(curl!=nullptr) curl_easy_cleanup(curl);
+                            if(curlHeaders!=nullptr) curl_slist_free_all(curlHeaders);
+                            if(outputFp!=nullptr) std::fclose(outputFp);
+                            if(inputFp!=nullptr) std::fclose(inputFp);
+                          };
+  SCOPE_GUARD(cleanUpCurl, curlCleaner);
+  char errbuf[CURL_ERROR_SIZE];
+  curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
 
-  std::string cmd = "curl -s -w '%{http_code}' -D '" + headers_deleter.m_fileName + "' ";
-  // From curl manual:
-  // This  option [-X] only changes the actual word used in the HTTP request, it does not alter
-  // the way curl behaves. So for example if you want to make a proper
-  // HEAD request, using -X HEAD will not suffice. You need to use the -I, --head option.
+  if (!m_outputFile.empty()) {outputFp = std::fopen(m_outputFile.c_str(), "wb"); }
+  if (!m_inputFile.empty()) {inputFp = std::fopen(m_inputFile.c_str(), "rb");}
+
   if (m_httpMethod == "HEAD")
-    cmd += "-I ";
-  else
-    cmd += "-X " + m_httpMethod + " ";
+  {
+    curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION,
+      +[](char *buffer, size_t size, size_t nitems, void *stream) -> size_t {
+        size_t realsize = size * nitems;
+        std::string * receivedHeadersPtr = static_cast<std::string*>(stream);
+        receivedHeadersPtr->append(buffer, realsize);
+        return realsize;
+      });
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, static_cast<void*>(&receivedHeaders));
+  }
+  else if (m_httpMethod == "POST")
+  {
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+  }
+  else if (m_httpMethod == "PUT")
+  {
+    curl_easy_setopt(curl, CURLOPT_PUT, 1L);
+  }
+  else if (m_httpMethod == "DELETE")
+  {
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+  }
+  else if (m_httpMethod == "GET")
+  {
+    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+  }
+  else {
+    ASSERT(false, ("Unsupported HTTP method", httpMethod));
+  }
 
   for (auto const & header : m_headers)
   {
-    cmd += "-H '" + header.first + ": " + header.second + "' ";
+    curlHeaders = curl_slist_append(curlHeaders, (header.first + ": " + header.second).c_str());
   }
 
   if (!m_cookies.empty())
-    cmd += "-b '" + m_cookies + "' ";
+    curl_easy_setopt(curl, CURLOPT_COOKIE, m_cookies.c_str());
 
-  cmd += "-m '" + strings::to_string(m_timeoutSec) + "' ";
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<int>(m_timeoutSec * 1000));
 
-  if (!m_bodyData.empty())
-  {
-    body_deleter.m_fileName = GetTmpFileName();
-    // POST body through tmp file to avoid breaking command line.
-    if (!WriteToFile(body_deleter.m_fileName, m_bodyData))
-      return false;
 
-    // TODO(AlexZ): Correctly clean up this internal var to avoid client confusion.
-    m_inputFile = body_deleter.m_fileName;
-  }
+
   // Content-Length is added automatically by curl.
-  if (!m_inputFile.empty())
-    cmd += "--data-binary '@" + m_inputFile + "' ";
-
-  // Use temporary file to receive data from server.
-  // If user has specified file name to save data, it is not temporary and is not deleted automatically.
-  std::string rfile = m_outputFile;
-  if (rfile.empty())
+  if (!m_inputFile.empty() && inputFp != nullptr)
   {
-    rfile = GetTmpFileName();
-    received_file_deleter.m_fileName = rfile;
+    curl_easy_setopt(curl,
+            (m_httpMethod == "POST")?CURLOPT_POSTFIELDSIZE_LARGE:CURLOPT_INFILESIZE_LARGE,
+            (curl_off_t)m_bodyData.size());
+
+    curl_easy_setopt(curl, CURLOPT_READDATA, static_cast<void*>(inputFp));
+    curl_easy_setopt(curl, CURLOPT_READFUNCTION,
+      +[](char *ptr, size_t size, size_t nmemb, void *stream) -> size_t {
+        std::FILE * inputFp = static_cast<std::FILE*>(stream);
+        return std::fread(ptr, size, nmemb, inputFp);
+      });
   }
 
-  cmd += "-o " + rfile + strings::to_string(" ") + "'" + m_urlRequested + "'";
-
-  LOG(LDEBUG, ("Executing", cmd));
-
-  try
+  // Use memory to receive data from server.
+  // If user has specified file name to save data, then save data there.
+  if (outputFp == nullptr) //( m_outputFile.empty())
   {
-    m_errorCode = stoi(RunCurl(cmd));
+    // Write into m_serverResponse directly
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, static_cast<void*>(&m_serverResponse));
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
+      +[](char *buffer, size_t size, size_t nmemb, void *stream) -> size_t {
+        size_t realsize = size * nmemb;
+        std::string * m_serverResponsePtr = static_cast<std::string*>(stream);
+        m_serverResponsePtr->append(buffer, realsize);
+        return realsize;
+      });
   }
-  catch (RootException const & ex)
+  else
   {
-    LOG(LERROR, (ex.Msg()));
+    // If not empty then write into a file named by m_outputFile
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, static_cast<void*>(outputFp));
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
+      +[](char *ptr, size_t size, size_t nmemb, void *stream) -> size_t {
+        std::FILE * outputFp = static_cast<std::FILE*>(stream);
+        return std::fwrite(ptr, size, nmemb, outputFp);
+      });
+  }
+
+  curl_easy_setopt(curl, CURLOPT_URL, m_urlRequested);
+
+  LOG(LDEBUG, ("Calling curl"));
+
+  CURLcode res = curl_easy_perform(curl);
+  if (res != CURLE_OK)
+  {
+    LOG(LERROR, ("Error calling curl:", errbuf));
     return false;
   }
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &m_errorCode);
 
   m_headers.clear();
-  auto const headers = ParseHeaders(ReadFileAsString(headers_deleter.m_fileName));
+  auto const headers = ParseHeaders(receivedHeaders);
   std::string serverCookies;
   std::string headerKey;
   for (auto const & header : headers)
@@ -273,10 +257,6 @@ bool HttpClient::RunHttpRequest()
   if (m_urlReceived.empty())
   {
     m_urlReceived = m_urlRequested;
-    // Load body contents in final request only (skip redirects).
-    // Sometimes server can reply with empty body, and it's ok.
-    if (m_outputFile.empty())
-      m_serverResponse = ReadFileAsString(rfile);
   }
   else
   {
@@ -287,6 +267,8 @@ bool HttpClient::RunHttpRequest()
     HttpClient redirect(m_urlReceived);
     redirect.SetCookies(CombinedCookies());
 
+    /* Prevent multiple open curl handles and FPs because of recursion*/
+    curlCleaner(); cleanUpCurl.release();
     if (!redirect.RunHttpRequest())
     {
       m_errorCode = -1;
