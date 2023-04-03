@@ -1,0 +1,36 @@
+app-id: app.organicmaps.desktop
+runtime: org.kde.Platform
+runtime-version: '5.15-22.08'
+sdk: org.kde.Sdk
+command: OMaps
+rename-desktop-file: OrganicMaps.desktop
+rename-icon: organicmaps
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+#build-options:
+#  cflags: -Og -ggdb3 -fno-inline
+#  cxxflags: -Og -ggdb3 -fno-inline
+#  strip: false
+#  no-debuginfo-compression: true
+#  no-debuginfo: true
+modules:
+  - name: organicmaps
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+#     - -DCMAKE_BUILD_TYPE=Debug
+    cleanup:
+      - '/lib' # static libraries and build configs
+      - '/include'
+    sources:
+      - type: dir
+        path: "../../."
+      - type: shell
+        commands:
+          - cp private_default.h private.h
+          - cd 3party/boost && ./bootstrap.sh && ./b2 headers

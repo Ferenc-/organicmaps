@@ -1,0 +1,56 @@
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+name: "Flatpak"
+jobs:
+  flatpak:
+    name: "Flatpak"
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:kde-5.15-22.08
+      options: --privileged
+    strategy:
+      matrix:
+        arch: [aarch64]
+#       arch: [x86_64, aarch64]
+      fail-fast: false
+    steps:
+#   - name: Free Disk Space (Ubuntu)
+#     uses: jlumbroso/free-disk-space@main
+#     with:
+#       # this might remove tools that are actually needed,
+#       # if set to "true" but frees about 6 GB
+#       tool-cache: false
+
+#       # all of these default to true, but feel free to set to
+#       # "false" if necessary for your workflow
+#       android: true
+#       dotnet: true
+#       haskell: true
+#       large-packages: true
+#       swap-storage: true
+    - name: Checkout Source and Submodules
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Install Docker
+      run: |
+        dnf -y install docker
+    - name: Setup QEMU
+      id: qemu
+      uses: docker/setup-qemu-action@v1
+      with:
+        platforms: arm64
+    - uses: bilelmoussaoui/flatpak-github-actions/flatpak-builder@v4
+      name: "Build"
+      with:
+        bundle: app.organicmaps.desktop.flatpak
+        manifest-path: packaging/flatpak/app.organicmaps.desktop.yml
+        cache-key: flatpak-builder-${{ github.sha }}
+        arch: ${{ matrix.arch }}

@@ -22,6 +22,7 @@
 
 #include <QtCore/QDir>
 #include <QtGui/QScreen>
+#include <QtGui/QSurfaceFormat>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
@@ -45,6 +46,7 @@ DEFINE_int32(width, 0, "Screenshot width.");
 DEFINE_int32(height, 0, "Screenshot height.");
 DEFINE_double(dpi_scale, 0.0, "Screenshot dpi scale (mdpi = 1.0, hdpi = 1.5, "
               "xhdpiScale = 2.0, 6plus = 2.4, xxhdpi = 3.0, xxxhdpi = 3.5).");
+
 
 using namespace std;
 
@@ -143,7 +145,7 @@ int main(int argc, char * argv[])
   // Pretty icons on HDPI displays.
   QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
   platform.SetupMeasurementSystem();
-  
+
 
 #ifdef BUILD_DESIGNER
     QApplication::setApplicationName("Organic Maps Designer");
@@ -169,18 +171,7 @@ int main(int argc, char * argv[])
   int returnCode = -1;
   if (eulaAccepted)   // User has accepted EULA
   {
-    bool apiOpenGLES3 = false;
     std::unique_ptr<qt::ScreenshotParams> screenshotParams;
-
-#if defined(OMIM_OS_MAC)
-    apiOpenGLES3 = app.arguments().contains("es3", Qt::CaseInsensitive);
-#elif defined(OMIM_OS_LINUX)
-    // TODO: Implement proper runtime version detection in a separate commit
-    // Currently on Linux in a maximum ES2 scenario,
-    // the GL function pointers wouldn't be properly resolved anyway,
-    // so here at least a possibly successful path is chosen.
-    apiOpenGLES3 = true;
-#endif
 
     if (!FLAGS_lang.empty())
       (void)::setenv("LANGUAGE", FLAGS_lang.c_str(), 1);
@@ -213,7 +204,32 @@ int main(int argc, char * argv[])
         screenshotParams->m_dpiScale = FLAGS_dpi_scale;
     }
 
-    qt::MainWindow::SetDefaultSurfaceFormat(apiOpenGLES3);
+
+    QSurfaceFormat fmt;
+    fmt.setAlphaBufferSize(8);
+    fmt.setBlueBufferSize(8);
+    fmt.setGreenBufferSize(8);
+    fmt.setRedBufferSize(8);
+    fmt.setStencilBufferSize(0);
+    fmt.setSamples(0);
+    fmt.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+    fmt.setSwapInterval(1);
+    fmt.setDepthBufferSize(16);
+#if defined(OMIM_OS_LINUX)
+    // This is a workaround for older distros, which rely on X.org and Mesa,
+    // where somehow the Mesa driver itself doesn't
+    // make all the otherwise supported GLSL versions available by default
+    // and such requests are somehow disregarded at later stages of execution.
+    // This setting here will be potentially overwritten and overruled anyway,
+    // and only needed to ensure that we have the needed GLSL compiler available
+    // later when we need it.
+    if (app.platformName() == QString("xcb"))
+      fmt.setVersion(3, 2);
+#endif
+#ifdef ENABLE_OPENGL_DIAGNOSTICS
+    fmt.setOption(QSurfaceFormat::DebugContext);
+#endif
+    QSurfaceFormat::setDefaultFormat(fmt);
 
     FrameworkParams frameworkParams;
 
@@ -247,7 +263,7 @@ int main(int argc, char * argv[])
 #endif // BUILD_DESIGNER
 
     Framework framework(frameworkParams);
-    qt::MainWindow w(framework, apiOpenGLES3, std::move(screenshotParams),
+    qt::MainWindow w(framework, std::move(screenshotParams),
                      app.primaryScreen()->geometry()
 #ifdef BUILD_DESIGNER
                      , mapcssFilePath
