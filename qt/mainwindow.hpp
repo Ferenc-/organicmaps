@@ -10,6 +10,16 @@
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMainWindow>
+#if defined(OMIM_OS_LINUX)
+#include <QVulkanFunctions>
+#include <QVulkanInstance>
+#include <QFile>
+#include <QVulkanWindow>
+namespace qt
+{
+class VulkanWindow;
+}
+#endif
 
 #include <array>
 #include <string>
@@ -31,6 +41,8 @@ struct ScreenshotParams;
 class MainWindow : public QMainWindow, location::LocationObserver
 {
   DrawWidget * m_pDrawWidget = nullptr;
+  QWidget * m_Wrapper = nullptr;
+  QVulkanInstance * m_VulkanInstance = nullptr;
   // TODO(mgsergio): Make indexing more informative.
   std::array<QDockWidget *, 1> m_Docks;
 
@@ -60,6 +72,10 @@ class MainWindow : public QMainWindow, location::LocationObserver
   PopupMenuHolder * m_layers = nullptr;
   PopupMenuHolder * m_routing = nullptr;
   PopupMenuHolder * m_selection = nullptr;
+
+#if defined(OMIM_OS_LINUX)
+  VulkanWindow *m_window;
+#endif
 
 #ifdef BUILD_DESIGNER
   QString const m_mapcssFilePath = nullptr;
@@ -145,4 +161,62 @@ protected Q_SLOTS:
   void OnBuildPhonePackage();
 #endif // BUILD_DESIGNER
 };
+
+#if defined(OMIM_OS_LINUX)
+class TriangleRenderer : public QVulkanWindowRenderer
+{
+public:
+    TriangleRenderer(QVulkanWindow *w, bool msaa = false);
+
+    void initResources() override;
+    void initSwapChainResources() override;
+    void releaseSwapChainResources() override;
+    void releaseResources() override;
+
+    void startNextFrame() override;
+
+protected:
+    VkShaderModule createShader(const QString &name);
+
+    QVulkanWindow *m_window;
+    QVulkanDeviceFunctions *m_devFuncs;
+
+    VkDeviceMemory m_bufMem = VK_NULL_HANDLE;
+    VkBuffer m_buf = VK_NULL_HANDLE;
+    VkDescriptorBufferInfo m_uniformBufInfo[QVulkanWindow::MAX_CONCURRENT_FRAME_COUNT];
+
+    VkDescriptorPool m_descPool = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_descSetLayout = VK_NULL_HANDLE;
+    VkDescriptorSet m_descSet[QVulkanWindow::MAX_CONCURRENT_FRAME_COUNT];
+
+    VkPipelineCache m_pipelineCache = VK_NULL_HANDLE;
+    VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+    VkPipeline m_pipeline = VK_NULL_HANDLE;
+
+    QMatrix4x4 m_proj;
+    float m_rotation = 0.0f;
+};
+
+class VulkanRenderer : public TriangleRenderer
+{
+public:
+    VulkanRenderer(VulkanWindow *w);
+
+    void initResources() override;
+    void startNextFrame() override;
+};
+
+class VulkanWindow : public QVulkanWindow
+{
+    Q_OBJECT
+
+public:
+    QVulkanWindowRenderer *createRenderer() override;
+
+signals:
+    void vulkanInfoReceived(const QString &text);
+    //void frameQueued(int colorValue);
+};
+
+#endif
 }  // namespace qt

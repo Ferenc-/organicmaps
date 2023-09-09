@@ -16,6 +16,7 @@
 #include "platform/platform.hpp"
 
 #include "base/assert.hpp"
+#include "base/logging.hpp"
 
 #include "defines.hpp"
 
@@ -119,6 +120,25 @@ MainWindow::MainWindow(Framework & framework,
 
   int const width = m_screenshotMode ? static_cast<int>(screenshotParams->m_width) : 0;
   int const height = m_screenshotMode ? static_cast<int>(screenshotParams->m_height) : 0;
+
+  m_VulkanInstance = new QVulkanInstance;
+#ifdef ENABLE_VULKAN_DIAGNOSTICS
+  m_VulkanInstance->setLayers({ "VK_LAYER_KHRONOS_validation" }); // This is also set in drape/vulkan/vulkan_layers.cpp
+#endif
+  if (!m_VulkanInstance->create())
+  {
+    LOG(LINFO, ("Failed to create Vulkan instance, Vulkan is likely not supported: ", m_VulkanInstance->errorCode()));
+  }
+  else
+  {
+    LOG(LINFO, ("Successfully create Vulkan instance"));
+    m_window = new qt::VulkanWindow;
+    m_window->setVulkanInstance(m_VulkanInstance);
+    m_Wrapper = QWidget::createWindowContainer(m_window, this);
+    setCentralWidget(m_Wrapper);
+  }
+
+#if 0
   m_pDrawWidget = new DrawWidget(framework, std::move(screenshotParams), this);
 
   QList<Qt::GestureType> gestures;
@@ -134,8 +154,8 @@ MainWindow::MainWindow(Framework & framework,
   }
 
   connect(m_pDrawWidget, SIGNAL(BeforeEngineCreation()), this, SLOT(OnBeforeEngineCreation()));
-
   CreateCountryStatusControls();
+#endif
   CreateNavigationBar();
   CreateSearchBarAndPanel();
 
@@ -216,9 +236,9 @@ MainWindow::MainWindow(Framework & framework,
   }
 #endif // NO_DOWNLOADER
 
-  m_pDrawWidget->UpdateAfterSettingsChanged();
+  //m_pDrawWidget->UpdateAfterSettingsChanged();
 
-  RoutingSettings::LoadSession(m_pDrawWidget->GetFramework());
+  //RoutingSettings::LoadSession(m_pDrawWidget->GetFramework());
 }
 
 #if defined(OMIM_OS_WINDOWS)
@@ -263,7 +283,7 @@ void MainWindow::CreateNavigationBar()
   pToolBar->setOrientation(Qt::Vertical);
   pToolBar->setIconSize(QSize(32, 32));
   {
-    m_pDrawWidget->BindHotkeys(*this);
+    //m_pDrawWidget->BindHotkeys(*this);
 
     // Add navigation hot keys.
     qt::common::Hotkey const hotkeys[] = {
@@ -276,7 +296,7 @@ void MainWindow::CreateNavigationBar()
     {
       QAction * pAct = new QAction(this);
       pAct->setShortcut(QKeySequence(hotkey.m_key));
-      connect(pAct, SIGNAL(triggered()), m_pDrawWidget, hotkey.m_slot);
+      //connect(pAct, SIGNAL(triggered()), m_pDrawWidget, hotkey.m_slot);
       addAction(pAct);
     }
   }
@@ -288,15 +308,15 @@ void MainWindow::CreateNavigationBar()
 
     m_layers->addAction(QIcon(":/navig64/traffic.png"), tr("Traffic"),
                         std::bind(&MainWindow::OnLayerEnabled, this, LayerType::TRAFFIC), true);
-    m_layers->setChecked(LayerType::TRAFFIC, m_pDrawWidget->GetFramework().LoadTrafficEnabled());
+//    m_layers->setChecked(LayerType::TRAFFIC, m_pDrawWidget->GetFramework().LoadTrafficEnabled());
 
     m_layers->addAction(QIcon(":/navig64/subway.png"), tr("Public transport"),
                         std::bind(&MainWindow::OnLayerEnabled, this, LayerType::TRANSIT), true);
-    m_layers->setChecked(LayerType::TRANSIT, m_pDrawWidget->GetFramework().LoadTransitSchemeEnabled());
+//    m_layers->setChecked(LayerType::TRANSIT, m_pDrawWidget->GetFramework().LoadTransitSchemeEnabled());
 
     m_layers->addAction(QIcon(":/navig64/isolines.png"), tr("Isolines"),
                         std::bind(&MainWindow::OnLayerEnabled, this, LayerType::ISOLINES), true);
-    m_layers->setChecked(LayerType::ISOLINES, m_pDrawWidget->GetFramework().LoadIsolinesEnabled());
+//    m_layers->setChecked(LayerType::ISOLINES, m_pDrawWidget->GetFramework().LoadIsolinesEnabled());
 
     pToolBar->addWidget(m_layers->create());
     m_layers->setMainIcon(QIcon(":/navig64/layers.png"));
@@ -321,7 +341,7 @@ void MainWindow::CreateNavigationBar()
     QToolButton * toolBtn = m_routing->create();
     toolBtn->setToolTip(tr("Select mode and use SHIFT + LMB to set point"));
     pToolBar->addWidget(toolBtn);
-    m_routing->setCurrent(m_pDrawWidget->GetRoutePointAddMode());
+//    m_routing->setCurrent(m_pDrawWidget->GetRoutePointAddMode());
 
     QAction * act = pToolBar->addAction(QIcon(":/navig64/routing.png"), tr("Follow route"), this, SLOT(OnFollowRoute()));
     act->setToolTip(tr("Build route and use ALT + LMB to emulate current position"));
@@ -407,7 +427,7 @@ void MainWindow::CreateNavigationBar()
     m_pDrawDebugRectAction->setCheckable(true);
     m_pDrawDebugRectAction->setChecked(false);
     m_pDrawDebugRectAction->setToolTip(tr("Debug style"));
-    m_pDrawWidget->GetFramework().EnableDebugRectRendering(false);
+//    m_pDrawWidget->GetFramework().EnableDebugRectRendering(false);
 
     // Add "Get statistics" button
     m_pGetStatisticsAction = pToolBar->addAction(QIcon(":/navig64/chart.png"),
@@ -436,7 +456,7 @@ void MainWindow::CreateNavigationBar()
   }
 
   pToolBar->addSeparator();
-  qt::common::ScaleSlider::Embed(Qt::Vertical, *pToolBar, *m_pDrawWidget);
+//  qt::common::ScaleSlider::Embed(Qt::Vertical, *pToolBar, *m_pDrawWidget);
 
 #ifndef NO_DOWNLOADER
   pToolBar->addSeparator();
@@ -471,7 +491,7 @@ void MainWindow::CreateCountryStatusControls()
   mainLayout->addWidget(m_downloadingStatusLabel, 0, Qt::AlignHCenter);
   m_downloadingStatusLabel->setVisible(false);
 
-  m_pDrawWidget->setLayout(mainLayout);
+  //m_pDrawWidget->setLayout(mainLayout);
 
   auto const OnCountryChanged = [this](storage::CountryId const & countryId)
   {
@@ -552,8 +572,8 @@ void MainWindow::OnLocationError(location::TLocationError errorCode)
   case location::ETimeout: [[fallthrough]];
   case location::EUnknown:
     {
-      if (m_pDrawWidget && m_pMyPositionAction)
-        m_pMyPositionAction->setEnabled(false);
+      //if (m_pDrawWidget && m_pMyPositionAction)
+      //  m_pMyPositionAction->setEnabled(false);
       break;
     }
 
@@ -562,63 +582,63 @@ void MainWindow::OnLocationError(location::TLocationError errorCode)
     break;
   }
 
-  if (m_pDrawWidget != nullptr)
-    m_pDrawWidget->GetFramework().OnLocationError(errorCode);
+  //if (m_pDrawWidget != nullptr)
+  //m_pDrawWidget->GetFramework().OnLocationError(errorCode);
 }
 
 void MainWindow::OnLocationUpdated(location::GpsInfo const & info)
 {
-  m_pDrawWidget->GetFramework().OnLocationUpdate(info);
+  //m_pDrawWidget->GetFramework().OnLocationUpdate(info);
 }
 
 void MainWindow::OnMyPosition()
 {
-  if (m_pMyPositionAction->isEnabled())
-    m_pDrawWidget->GetFramework().SwitchMyPositionNextMode();
+//  if (m_pMyPositionAction->isEnabled())
+//    m_pDrawWidget->GetFramework().SwitchMyPositionNextMode();
 }
 
 void MainWindow::OnCreateFeatureClicked()
 {
-  if (m_pCreateFeatureAction->isChecked())
-  {
-    m_pDrawWidget->ChoosePositionModeEnable();
-  }
-  else
-  {
-    m_pDrawWidget->ChoosePositionModeDisable();
-    m_pDrawWidget->CreateFeature();
-  }
+//  if (m_pCreateFeatureAction->isChecked())
+//  {
+//    m_pDrawWidget->ChoosePositionModeEnable();
+//  }
+//  else
+//  {
+//    m_pDrawWidget->ChoosePositionModeDisable();
+//    m_pDrawWidget->CreateFeature();
+//  }
 }
 
 void MainWindow::OnSwitchSelectionMode(SelectionMode mode)
 {
-  if (m_selection->isChecked(mode))
-  {
-    m_selection->setCurrent(mode);
-    m_pDrawWidget->SetSelectionMode(mode);
-  }
-  else
-    OnClearSelection();
+//  if (m_selection->isChecked(mode))
+//  {
+//    m_selection->setCurrent(mode);
+//    m_pDrawWidget->SetSelectionMode(mode);
+//  }
+//  else
+//    OnClearSelection();
 }
 
 void MainWindow::OnSwitchMwmsBordersSelectionMode()
 {
   MwmsBordersSelection dlg(this);
   auto const response = dlg.ShowModal();
-  if (response == SelectionMode::Cancelled)
-  {
-    m_pDrawWidget->DropSelectionIfMWMBordersMode();
-    return;
-  }
-
-  m_selection->setCurrent(SelectionMode::MWMBorders);
-  m_pDrawWidget->SetSelectionMode(response);
+//  if (response == SelectionMode::Cancelled)
+//  {
+//    m_pDrawWidget->DropSelectionIfMWMBordersMode();
+//    return;
+//  }
+//
+//  m_selection->setCurrent(SelectionMode::MWMBorders);
+//  m_pDrawWidget->SetSelectionMode(response);
 }
 
 void MainWindow::OnClearSelection()
 {
-  m_pDrawWidget->GetFramework().GetDrapeApi().Clear();
-  m_pDrawWidget->SetSelectionMode({});
+//  m_pDrawWidget->GetFramework().GetDrapeApi().Clear();
+//  m_pDrawWidget->SetSelectionMode({});
 
   m_selection->setMainIcon({});
 }
@@ -654,19 +674,19 @@ void MainWindow::OnUploadEditsMenuItem()
 
 void MainWindow::OnBeforeEngineCreation()
 {
-  m_pDrawWidget->GetFramework().SetMyPositionModeListener([this](location::EMyPositionMode mode, bool /*routingActive*/)
-  {
-    LocationStateModeChanged(mode);
-  });
+  // m_pDrawWidget->GetFramework().SetMyPositionModeListener([this](location::EMyPositionMode mode, bool /*routingActive*/)
+  // {
+  //   LocationStateModeChanged(mode);
+  // });
 }
 
 void MainWindow::OnPreferences()
 {
-  Framework & framework = m_pDrawWidget->GetFramework();
-  PreferencesDialog dlg(this, framework);
-  dlg.exec();
-
-  framework.EnterForeground();
+//  Framework & framework = m_pDrawWidget->GetFramework();
+//  PreferencesDialog dlg(this, framework);
+//  dlg.exec();
+//
+//  framework.EnterForeground();
 }
 
 #ifdef BUILD_DESIGNER
@@ -726,9 +746,9 @@ void MainWindow::OnRecalculateGeomIndex()
 
 void MainWindow::OnDebugStyle()
 {
-  bool const checked = m_pDrawDebugRectAction->isChecked();
-  m_pDrawWidget->GetFramework().EnableDebugRectRendering(checked);
-  m_pDrawWidget->RefreshDrawingRules();
+//  bool const checked = m_pDrawDebugRectAction->isChecked();
+//  m_pDrawWidget->GetFramework().EnableDebugRectRendering(checked);
+//  m_pDrawWidget->RefreshDrawingRules();
 }
 
 void MainWindow::OnGetStatistics()
@@ -818,9 +838,9 @@ void MainWindow::OnBuildPhonePackage()
 #ifndef NO_DOWNLOADER
 void MainWindow::ShowUpdateDialog()
 {
-  UpdateDialog dlg(this, m_pDrawWidget->GetFramework());
-  dlg.ShowModal();
-  m_pDrawWidget->update();
+//  UpdateDialog dlg(this, m_pDrawWidget->GetFramework());
+//  dlg.ShowModal();
+//  m_pDrawWidget->update();
 }
 
 #endif // NO_DOWNLOADER
@@ -829,8 +849,8 @@ void MainWindow::CreateSearchBarAndPanel()
 {
   CreatePanelImpl(0, Qt::RightDockWidgetArea, tr("Search"), QKeySequence(), 0);
 
-  SearchPanel * panel = new SearchPanel(m_pDrawWidget, m_Docks[0]);
-  m_Docks[0]->setWidget(panel);
+//  SearchPanel * panel = new SearchPanel(m_pDrawWidget, m_Docks[0]);
+//  m_Docks[0]->setWidget(panel);
 }
 
 void MainWindow::CreatePanelImpl(size_t i, Qt::DockWidgetArea area, QString const & name,
@@ -856,7 +876,7 @@ void MainWindow::CreatePanelImpl(size_t i, Qt::DockWidgetArea area, QString cons
 
 void MainWindow::closeEvent(QCloseEvent * e)
 {
-  m_pDrawWidget->PrepareShutdown();
+ // m_pDrawWidget->PrepareShutdown();
   e->accept();
 }
 
@@ -872,26 +892,26 @@ void MainWindow::OnRetryDownloadClicked()
 
 void MainWindow::SetLayerEnabled(LayerType type, bool enable)
 {
-  auto & frm = m_pDrawWidget->GetFramework();
-  switch (type)
-  {
-  case LayerType::TRAFFIC:
-    /// @todo Uncomment when we will integrate a traffic provider.
-    // frm.GetTrafficManager().SetEnabled(enable);
-    // frm.SaveTrafficEnabled(enable);
-    break;
-  case LayerType::TRANSIT:
-    frm.GetTransitManager().EnableTransitSchemeMode(enable);
-    frm.SaveTransitSchemeEnabled(enable);
-    break;
-  case LayerType::ISOLINES:
-    frm.GetIsolinesManager().SetEnabled(enable);
-    frm.SaveIsolinesEnabled(enable);
-    break;
-  default:
-    UNREACHABLE();
-    break;
-  }
+//  auto & frm = m_pDrawWidget->GetFramework();
+//  switch (type)
+//  {
+//  case LayerType::TRAFFIC:
+//  /// @todo Uncomment when we will integrate a traffic provider.
+//  // frm.GetTrafficManager().SetEnabled(enable);
+//  // frm.SaveTrafficEnabled(enable);
+//    break;
+//  case LayerType::TRANSIT:
+//    frm.GetTransitManager().EnableTransitSchemeMode(enable);
+//    frm.SaveTransitSchemeEnabled(enable);
+//    break;
+//  case LayerType::ISOLINES:
+//    frm.GetIsolinesManager().SetEnabled(enable);
+//    frm.SaveIsolinesEnabled(enable);
+//    break;
+//  default:
+//    UNREACHABLE();
+//    break;
+//  }
 }
 
 void MainWindow::OnLayerEnabled(LayerType layer)
@@ -910,36 +930,561 @@ void MainWindow::OnLayerEnabled(LayerType layer)
 
 void MainWindow::OnRulerEnabled()
 {
-  m_pDrawWidget->SetRuler(m_rulerAction->isChecked());
+//  m_pDrawWidget->SetRuler(m_rulerAction->isChecked());
 }
 
 void MainWindow::OnRoutePointSelected(RouteMarkType type)
 {
-  m_routing->setCurrent(type);
-  m_pDrawWidget->SetRoutePointAddMode(type);
+//  m_routing->setCurrent(type);
+//  m_pDrawWidget->SetRoutePointAddMode(type);
 }
 
 void MainWindow::OnFollowRoute()
 {
-  m_pDrawWidget->FollowRoute();
+//  m_pDrawWidget->FollowRoute();
 }
 
 void MainWindow::OnClearRoute()
 {
-  m_pDrawWidget->ClearRoute();
+//  m_pDrawWidget->ClearRoute();
 }
 
 void MainWindow::OnRoutingSettings()
 {
-  RoutingSettings dlg(this, m_pDrawWidget->GetFramework());
-  dlg.ShowModal();
+//  RoutingSettings dlg(this, m_pDrawWidget->GetFramework());
+//  dlg.ShowModal();
 }
 
 void MainWindow::OnBookmarksAction()
 {
-  BookmarkDialog dlg(this, m_pDrawWidget->GetFramework());
-  dlg.ShowModal();
-  m_pDrawWidget->update();
+//  BookmarkDialog dlg(this, m_pDrawWidget->GetFramework());
+//  dlg.ShowModal();
+//  m_pDrawWidget->update();
 }
 
+#if defined(OMIM_OS_LINUX)
+// Note that the vertex data and the projection matrix assume OpenGL. With
+// Vulkan Y is negated in clip space and the near/far plane is at 0/1 instead
+// of -1/1. These will be corrected for by an extra transformation when
+// calculating the modelview-projection matrix.
+static float vertexData[] = { // Y up, front = CCW
+     0.0f,   0.5f,   1.0f, 0.0f, 0.0f,
+    -0.5f,  -0.5f,   0.0f, 1.0f, 0.0f,
+     0.5f,  -0.5f,   0.0f, 0.0f, 1.0f
+};
+
+static const int UNIFORM_DATA_SIZE = 16 * sizeof(float);
+
+static inline VkDeviceSize aligned(VkDeviceSize v, VkDeviceSize byteAlign)
+{
+    return (v + byteAlign - 1) & ~(byteAlign - 1);
+}
+
+TriangleRenderer::TriangleRenderer(QVulkanWindow *w, bool msaa)
+    : m_window(w)
+{
+    if (msaa) {
+        const QList<int> counts = w->supportedSampleCounts();
+        qDebug() << "Supported sample counts:" << counts;
+        for (int s = 16; s >= 4; s /= 2) {
+            if (counts.contains(s)) {
+                qDebug("Requesting sample count %d", s);
+                m_window->setSampleCount(s);
+                break;
+            }
+        }
+    }
+}
+
+VkShaderModule TriangleRenderer::createShader(const QString &name)
+{
+    QFile file(name);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning("Failed to read shader %s", qPrintable(name));
+        return VK_NULL_HANDLE;
+    }
+    QByteArray blob = file.readAll();
+    file.close();
+
+    VkShaderModuleCreateInfo shaderInfo;
+    memset(&shaderInfo, 0, sizeof(shaderInfo));
+    shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shaderInfo.codeSize = blob.size();
+    shaderInfo.pCode = reinterpret_cast<const uint32_t *>(blob.constData());
+    VkShaderModule shaderModule;
+    VkResult err = m_devFuncs->vkCreateShaderModule(m_window->device(), &shaderInfo, nullptr, &shaderModule);
+    if (err != VK_SUCCESS) {
+        qWarning("Failed to create shader module: %d", err);
+        return VK_NULL_HANDLE;
+    }
+
+    return shaderModule;
+}
+
+void TriangleRenderer::initResources()
+{
+    qDebug("initResources");
+
+    VkDevice dev = m_window->device();
+    m_devFuncs = m_window->vulkanInstance()->deviceFunctions(dev);
+
+    // Prepare the vertex and uniform data. The vertex data will never
+    // change so one buffer is sufficient regardless of the value of
+    // QVulkanWindow::CONCURRENT_FRAME_COUNT. Uniform data is changing per
+    // frame however so active frames have to have a dedicated copy.
+
+    // Use just one memory allocation and one buffer. We will then specify the
+    // appropriate offsets for uniform buffers in the VkDescriptorBufferInfo.
+    // Have to watch out for
+    // VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment, though.
+
+    // The uniform buffer is not strictly required in this example, we could
+    // have used push constants as well since our single matrix (64 bytes) fits
+    // into the spec mandated minimum limit of 128 bytes. However, once that
+    // limit is not sufficient, the per-frame buffers, as shown below, will
+    // become necessary.
+
+    const int concurrentFrameCount = m_window->concurrentFrameCount();
+    const VkPhysicalDeviceLimits *pdevLimits = &m_window->physicalDeviceProperties()->limits;
+    const VkDeviceSize uniAlign = pdevLimits->minUniformBufferOffsetAlignment;
+    qDebug("uniform buffer offset alignment is %u", (uint) uniAlign);
+    VkBufferCreateInfo bufInfo;
+    memset(&bufInfo, 0, sizeof(bufInfo));
+    bufInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    // Our internal layout is vertex, uniform, uniform, ... with each uniform buffer start offset aligned to uniAlign.
+    const VkDeviceSize vertexAllocSize = aligned(sizeof(vertexData), uniAlign);
+    const VkDeviceSize uniformAllocSize = aligned(UNIFORM_DATA_SIZE, uniAlign);
+    bufInfo.size = vertexAllocSize + concurrentFrameCount * uniformAllocSize;
+    bufInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+    VkResult err = m_devFuncs->vkCreateBuffer(dev, &bufInfo, nullptr, &m_buf);
+    if (err != VK_SUCCESS)
+        qFatal("Failed to create buffer: %d", err);
+
+    VkMemoryRequirements memReq;
+    m_devFuncs->vkGetBufferMemoryRequirements(dev, m_buf, &memReq);
+
+    VkMemoryAllocateInfo memAllocInfo = {
+        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        nullptr,
+        memReq.size,
+        m_window->hostVisibleMemoryIndex()
+    };
+
+    err = m_devFuncs->vkAllocateMemory(dev, &memAllocInfo, nullptr, &m_bufMem);
+    if (err != VK_SUCCESS)
+        qFatal("Failed to allocate memory: %d", err);
+
+    err = m_devFuncs->vkBindBufferMemory(dev, m_buf, m_bufMem, 0);
+    if (err != VK_SUCCESS)
+        qFatal("Failed to bind buffer memory: %d", err);
+
+    quint8 *p;
+    err = m_devFuncs->vkMapMemory(dev, m_bufMem, 0, memReq.size, 0, reinterpret_cast<void **>(&p));
+    if (err != VK_SUCCESS)
+        qFatal("Failed to map memory: %d", err);
+    memcpy(p, vertexData, sizeof(vertexData));
+    QMatrix4x4 ident;
+    memset(m_uniformBufInfo, 0, sizeof(m_uniformBufInfo));
+    for (int i = 0; i < concurrentFrameCount; ++i) {
+        const VkDeviceSize offset = vertexAllocSize + i * uniformAllocSize;
+        memcpy(p + offset, ident.constData(), 16 * sizeof(float));
+        m_uniformBufInfo[i].buffer = m_buf;
+        m_uniformBufInfo[i].offset = offset;
+        m_uniformBufInfo[i].range = uniformAllocSize;
+    }
+    m_devFuncs->vkUnmapMemory(dev, m_bufMem);
+
+    VkVertexInputBindingDescription vertexBindingDesc = {
+        0, // binding
+        5 * sizeof(float),
+        VK_VERTEX_INPUT_RATE_VERTEX
+    };
+    VkVertexInputAttributeDescription vertexAttrDesc[] = {
+        { // position
+            0, // location
+            0, // binding
+            VK_FORMAT_R32G32_SFLOAT,
+            0
+        },
+        { // color
+            1,
+            0,
+            VK_FORMAT_R32G32B32_SFLOAT,
+            2 * sizeof(float)
+        }
+    };
+
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo;
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.pNext = nullptr;
+    vertexInputInfo.flags = 0;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDesc;
+    vertexInputInfo.vertexAttributeDescriptionCount = 2;
+    vertexInputInfo.pVertexAttributeDescriptions = vertexAttrDesc;
+
+    // Set up descriptor set and its layout.
+    VkDescriptorPoolSize descPoolSizes = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, uint32_t(concurrentFrameCount) };
+    VkDescriptorPoolCreateInfo descPoolInfo;
+    memset(&descPoolInfo, 0, sizeof(descPoolInfo));
+    descPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descPoolInfo.maxSets = concurrentFrameCount;
+    descPoolInfo.poolSizeCount = 1;
+    descPoolInfo.pPoolSizes = &descPoolSizes;
+    err = m_devFuncs->vkCreateDescriptorPool(dev, &descPoolInfo, nullptr, &m_descPool);
+    if (err != VK_SUCCESS)
+        qFatal("Failed to create descriptor pool: %d", err);
+
+    VkDescriptorSetLayoutBinding layoutBinding = {
+        0, // binding
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        1,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        nullptr
+    };
+    VkDescriptorSetLayoutCreateInfo descLayoutInfo = {
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        nullptr,
+        0,
+        1,
+        &layoutBinding
+    };
+    err = m_devFuncs->vkCreateDescriptorSetLayout(dev, &descLayoutInfo, nullptr, &m_descSetLayout);
+    if (err != VK_SUCCESS)
+        qFatal("Failed to create descriptor set layout: %d", err);
+
+    for (int i = 0; i < concurrentFrameCount; ++i) {
+        VkDescriptorSetAllocateInfo descSetAllocInfo = {
+            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            nullptr,
+            m_descPool,
+            1,
+            &m_descSetLayout
+        };
+        err = m_devFuncs->vkAllocateDescriptorSets(dev, &descSetAllocInfo, &m_descSet[i]);
+        if (err != VK_SUCCESS)
+            qFatal("Failed to allocate descriptor set: %d", err);
+
+        VkWriteDescriptorSet descWrite;
+        memset(&descWrite, 0, sizeof(descWrite));
+        descWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descWrite.dstSet = m_descSet[i];
+        descWrite.descriptorCount = 1;
+        descWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descWrite.pBufferInfo = &m_uniformBufInfo[i];
+        m_devFuncs->vkUpdateDescriptorSets(dev, 1, &descWrite, 0, nullptr);
+    }
+
+    // Pipeline cache
+    VkPipelineCacheCreateInfo pipelineCacheInfo;
+    memset(&pipelineCacheInfo, 0, sizeof(pipelineCacheInfo));
+    pipelineCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+    err = m_devFuncs->vkCreatePipelineCache(dev, &pipelineCacheInfo, nullptr, &m_pipelineCache);
+    if (err != VK_SUCCESS)
+        qFatal("Failed to create pipeline cache: %d", err);
+
+    // Pipeline layout
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo;
+    memset(&pipelineLayoutInfo, 0, sizeof(pipelineLayoutInfo));
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &m_descSetLayout;
+    err = m_devFuncs->vkCreatePipelineLayout(dev, &pipelineLayoutInfo, nullptr, &m_pipelineLayout);
+    if (err != VK_SUCCESS)
+        qFatal("Failed to create pipeline layout: %d", err);
+
+    // Shaders
+    VkShaderModule vertShaderModule = createShader("./color_vert.spv");//QStringLiteral(":/color_vert.spv"));
+    VkShaderModule fragShaderModule = createShader("./color_frag.spv");//QStringLiteral(":/color_frag.spv"));
+
+    // Graphics pipeline
+    VkGraphicsPipelineCreateInfo pipelineInfo;
+    memset(&pipelineInfo, 0, sizeof(pipelineInfo));
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+
+    VkPipelineShaderStageCreateInfo shaderStages[2] = {
+        {
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            nullptr,
+            0,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            vertShaderModule,
+            "main",
+            nullptr
+        },
+        {
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            nullptr,
+            0,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            fragShaderModule,
+            "main",
+            nullptr
+        }
+    };
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+
+    VkPipelineInputAssemblyStateCreateInfo ia;
+    memset(&ia, 0, sizeof(ia));
+    ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    pipelineInfo.pInputAssemblyState = &ia;
+
+    // The viewport and scissor will be set dynamically via vkCmdSetViewport/Scissor.
+    // This way the pipeline does not need to be touched when resizing the window.
+    VkPipelineViewportStateCreateInfo vp;
+    memset(&vp, 0, sizeof(vp));
+    vp.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    vp.viewportCount = 1;
+    vp.scissorCount = 1;
+    pipelineInfo.pViewportState = &vp;
+
+    VkPipelineRasterizationStateCreateInfo rs;
+    memset(&rs, 0, sizeof(rs));
+    rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rs.polygonMode = VK_POLYGON_MODE_FILL;
+    rs.cullMode = VK_CULL_MODE_NONE; // we want the back face as well
+    rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rs.lineWidth = 1.0f;
+    pipelineInfo.pRasterizationState = &rs;
+
+    VkPipelineMultisampleStateCreateInfo ms;
+    memset(&ms, 0, sizeof(ms));
+    ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    // Enable multisampling.
+    ms.rasterizationSamples = m_window->sampleCountFlagBits();
+    pipelineInfo.pMultisampleState = &ms;
+
+    VkPipelineDepthStencilStateCreateInfo ds;
+    memset(&ds, 0, sizeof(ds));
+    ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    ds.depthTestEnable = VK_TRUE;
+    ds.depthWriteEnable = VK_TRUE;
+    ds.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    pipelineInfo.pDepthStencilState = &ds;
+
+    VkPipelineColorBlendStateCreateInfo cb;
+    memset(&cb, 0, sizeof(cb));
+    cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    // no blend, write out all of rgba
+    VkPipelineColorBlendAttachmentState att;
+    memset(&att, 0, sizeof(att));
+    att.colorWriteMask = 0xF;
+    cb.attachmentCount = 1;
+    cb.pAttachments = &att;
+    pipelineInfo.pColorBlendState = &cb;
+
+    VkDynamicState dynEnable[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dyn;
+    memset(&dyn, 0, sizeof(dyn));
+    dyn.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dyn.dynamicStateCount = sizeof(dynEnable) / sizeof(VkDynamicState);
+    dyn.pDynamicStates = dynEnable;
+    pipelineInfo.pDynamicState = &dyn;
+
+    pipelineInfo.layout = m_pipelineLayout;
+    pipelineInfo.renderPass = m_window->defaultRenderPass();
+
+    err = m_devFuncs->vkCreateGraphicsPipelines(dev, m_pipelineCache, 1, &pipelineInfo, nullptr, &m_pipeline);
+    if (err != VK_SUCCESS)
+        qFatal("Failed to create graphics pipeline: %d", err);
+
+    if (vertShaderModule)
+        m_devFuncs->vkDestroyShaderModule(dev, vertShaderModule, nullptr);
+    if (fragShaderModule)
+        m_devFuncs->vkDestroyShaderModule(dev, fragShaderModule, nullptr);
+}
+
+void TriangleRenderer::initSwapChainResources()
+{
+    qDebug("initSwapChainResources");
+
+    // Projection matrix
+    m_proj = m_window->clipCorrectionMatrix(); // adjust for Vulkan-OpenGL clip space differences
+    const QSize sz = m_window->swapChainImageSize();
+    m_proj.perspective(45.0f, sz.width() / (float) sz.height(), 0.01f, 100.0f);
+    m_proj.translate(0, 0, -4);
+}
+
+void TriangleRenderer::releaseSwapChainResources()
+{
+    qDebug("releaseSwapChainResources");
+}
+
+void TriangleRenderer::releaseResources()
+{
+    qDebug("releaseResources");
+
+    VkDevice dev = m_window->device();
+
+    if (m_pipeline) {
+        m_devFuncs->vkDestroyPipeline(dev, m_pipeline, nullptr);
+        m_pipeline = VK_NULL_HANDLE;
+    }
+
+    if (m_pipelineLayout) {
+        m_devFuncs->vkDestroyPipelineLayout(dev, m_pipelineLayout, nullptr);
+        m_pipelineLayout = VK_NULL_HANDLE;
+    }
+
+    if (m_pipelineCache) {
+        m_devFuncs->vkDestroyPipelineCache(dev, m_pipelineCache, nullptr);
+        m_pipelineCache = VK_NULL_HANDLE;
+    }
+
+    if (m_descSetLayout) {
+        m_devFuncs->vkDestroyDescriptorSetLayout(dev, m_descSetLayout, nullptr);
+        m_descSetLayout = VK_NULL_HANDLE;
+    }
+
+    if (m_descPool) {
+        m_devFuncs->vkDestroyDescriptorPool(dev, m_descPool, nullptr);
+        m_descPool = VK_NULL_HANDLE;
+    }
+
+    if (m_buf) {
+        m_devFuncs->vkDestroyBuffer(dev, m_buf, nullptr);
+        m_buf = VK_NULL_HANDLE;
+    }
+
+    if (m_bufMem) {
+        m_devFuncs->vkFreeMemory(dev, m_bufMem, nullptr);
+        m_bufMem = VK_NULL_HANDLE;
+    }
+}
+
+void TriangleRenderer::startNextFrame()
+{
+    VkDevice dev = m_window->device();
+    VkCommandBuffer cb = m_window->currentCommandBuffer();
+    const QSize sz = m_window->swapChainImageSize();
+
+    VkClearColorValue clearColor = {{ 0, 0, 0, 1 }};
+    VkClearDepthStencilValue clearDS = { 1, 0 };
+    VkClearValue clearValues[3];
+    memset(clearValues, 0, sizeof(clearValues));
+    clearValues[0].color = clearValues[2].color = clearColor;
+    clearValues[1].depthStencil = clearDS;
+
+    VkRenderPassBeginInfo rpBeginInfo;
+    memset(&rpBeginInfo, 0, sizeof(rpBeginInfo));
+    rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rpBeginInfo.renderPass = m_window->defaultRenderPass();
+    rpBeginInfo.framebuffer = m_window->currentFramebuffer();
+    rpBeginInfo.renderArea.extent.width = sz.width();
+    rpBeginInfo.renderArea.extent.height = sz.height();
+    rpBeginInfo.clearValueCount = m_window->sampleCountFlagBits() > VK_SAMPLE_COUNT_1_BIT ? 3 : 2;
+    rpBeginInfo.pClearValues = clearValues;
+    VkCommandBuffer cmdBuf = m_window->currentCommandBuffer();
+    m_devFuncs->vkCmdBeginRenderPass(cmdBuf, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    quint8 *p;
+    VkResult err = m_devFuncs->vkMapMemory(dev, m_bufMem, m_uniformBufInfo[m_window->currentFrame()].offset,
+            UNIFORM_DATA_SIZE, 0, reinterpret_cast<void **>(&p));
+    if (err != VK_SUCCESS)
+        qFatal("Failed to map memory: %d", err);
+    QMatrix4x4 m = m_proj;
+    m.rotate(m_rotation, 0, 1, 0);
+    memcpy(p, m.constData(), 16 * sizeof(float));
+    m_devFuncs->vkUnmapMemory(dev, m_bufMem);
+
+    // Not exactly a real animation system, just advance on every frame for now.
+    m_rotation += 1.0f;
+
+    m_devFuncs->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    m_devFuncs->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1,
+                               &m_descSet[m_window->currentFrame()], 0, nullptr);
+    VkDeviceSize vbOffset = 0;
+    m_devFuncs->vkCmdBindVertexBuffers(cb, 0, 1, &m_buf, &vbOffset);
+
+    VkViewport viewport;
+    viewport.x = viewport.y = 0;
+    viewport.width = sz.width();
+    viewport.height = sz.height();
+    viewport.minDepth = 0;
+    viewport.maxDepth = 1;
+    m_devFuncs->vkCmdSetViewport(cb, 0, 1, &viewport);
+
+    VkRect2D scissor;
+    scissor.offset.x = scissor.offset.y = 0;
+    scissor.extent.width = viewport.width;
+    scissor.extent.height = viewport.height;
+    m_devFuncs->vkCmdSetScissor(cb, 0, 1, &scissor);
+
+    m_devFuncs->vkCmdDraw(cb, 3, 1, 0, 0);
+
+    m_devFuncs->vkCmdEndRenderPass(cmdBuf);
+
+    m_window->frameReady();
+    m_window->requestUpdate(); // render continuously, throttled by the presentation rate
+}
+
+
+VulkanRenderer::VulkanRenderer(VulkanWindow *w)
+    : TriangleRenderer(w)
+{
+}
+
+QVulkanWindowRenderer * VulkanWindow::createRenderer()
+{
+    return new VulkanRenderer(this);
+}
+
+void VulkanRenderer::initResources()
+{
+    TriangleRenderer::initResources();
+
+    QVulkanInstance *inst = m_window->vulkanInstance();
+    m_devFuncs = inst->deviceFunctions(m_window->device());
+
+    QString info;
+    info += QString::asprintf("Number of physical devices: %d\n", int(m_window->availablePhysicalDevices().count()));
+
+    QVulkanFunctions *f = inst->functions();
+    VkPhysicalDeviceProperties props;
+    f->vkGetPhysicalDeviceProperties(m_window->physicalDevice(), &props);
+    info += QString::asprintf("Active physical device name: '%s' version %d.%d.%d\nAPI version %d.%d.%d\n",
+                              props.deviceName,
+                              VK_VERSION_MAJOR(props.driverVersion), VK_VERSION_MINOR(props.driverVersion),
+                              VK_VERSION_PATCH(props.driverVersion),
+                              VK_VERSION_MAJOR(props.apiVersion), VK_VERSION_MINOR(props.apiVersion),
+                              VK_VERSION_PATCH(props.apiVersion));
+
+    info += QStringLiteral("Supported instance layers:\n");
+    for (const QVulkanLayer &layer : inst->supportedLayers())
+        info += QString::asprintf("    %s v%u\n", layer.name.constData(), layer.version);
+    info += QStringLiteral("Enabled instance layers:\n");
+    for (const QByteArray &layer : inst->layers())
+        info += QString::asprintf("    %s\n", layer.constData());
+
+    info += QStringLiteral("Supported instance extensions:\n");
+    for (const QVulkanExtension &ext : inst->supportedExtensions())
+        info += QString::asprintf("    %s v%u\n", ext.name.constData(), ext.version);
+    info += QStringLiteral("Enabled instance extensions:\n");
+    for (const QByteArray &ext : inst->extensions())
+        info += QString::asprintf("    %s\n", ext.constData());
+
+    info += QString::asprintf("Color format: %u\nDepth-stencil format: %u\n",
+                              m_window->colorFormat(), m_window->depthStencilFormat());
+
+    info += QStringLiteral("Supported sample counts:");
+    const QList<int> sampleCounts = m_window->supportedSampleCounts();
+    for (int count : sampleCounts)
+        info += QLatin1Char(' ') + QString::number(count);
+    info += QLatin1Char('\n');
+
+    //emit static_cast<VulkanWindow *>(m_window)->vulkanInfoReceived(info);
+    LOG(LINFO, ("Vulkan INFO:", info.toStdString()));
+}
+
+void VulkanRenderer::startNextFrame()
+{
+    TriangleRenderer::startNextFrame();
+    //emit static_cast<VulkanWindow *>(m_window)->frameQueued(int(m_rotation) % 360);
+}
+#endif
 }  // namespace qt
