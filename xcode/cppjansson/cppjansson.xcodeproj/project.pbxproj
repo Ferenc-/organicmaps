@@ -161,6 +161,7 @@
                     "$(PROJECT_DIR)/../../",
                     "$(PROJECT_DIR)/../../3party/jansson",
                     "$(PROJECT_DIR)/../../3party/jansson/jansson/src",
+                    "$(PROJECT_DIR)/../../3party/utf8cpp/include",
                 );
 			};
 			name = Debug;
@@ -173,6 +174,7 @@
                     "$(PROJECT_DIR)/../../",
                     "$(PROJECT_DIR)/../../3party/jansson",
                     "$(PROJECT_DIR)/../../3party/jansson/jansson/src",
+                    "$(PROJECT_DIR)/../../3party/utf8cpp/include",
                 );
 			};
 			name = Release;

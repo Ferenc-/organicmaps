@@ -681,6 +681,7 @@
 					"$(OMIM_ROOT)/3party/glm",
 					"$(OMIM_ROOT)/3party/Vulkan-Headers/include",
 					"$(OMIM_ROOT)/3party/vulkan_wrapper",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Debug;
@@ -694,6 +695,7 @@
 					"$(OMIM_ROOT)/3party/glm",
 					"$(OMIM_ROOT)/3party/Vulkan-Headers/include",
 					"$(OMIM_ROOT)/3party/vulkan_wrapper",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Release;

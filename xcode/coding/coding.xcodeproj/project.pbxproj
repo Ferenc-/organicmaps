@@ -810,6 +810,7 @@
 					"$(OMIM_ROOT)/3party/icu",
 					"$(OMIM_ROOT)/3party/icu/icu/icu4c/source/common",
 					"$(OMIM_ROOT)/3party/icu/icu/icu4c/source/i18n",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Debug;
@@ -827,6 +828,7 @@
 					"$(OMIM_ROOT)/3party/icu",
 					"$(OMIM_ROOT)/3party/icu/icu/icu4c/source/common",
 					"$(OMIM_ROOT)/3party/icu/icu/icu4c/source/i18n",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Release;

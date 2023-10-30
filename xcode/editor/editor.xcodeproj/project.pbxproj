@@ -513,6 +513,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(OMIM_ROOT)/3party/pugixml/pugixml/src",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Debug;
@@ -524,6 +525,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(OMIM_ROOT)/3party/pugixml/pugixml/src",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Release;

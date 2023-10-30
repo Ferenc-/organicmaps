@@ -1359,6 +1359,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 34F558351DBF2A2600A4FC11 /* common-debug.xcconfig */;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
+				);
 			};
 			name = Debug;
 		};
@@ -1366,6 +1370,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 34F558361DBF2A2600A4FC11 /* common-release.xcconfig */;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
+				);
 			};
 			name = Release;
 		};

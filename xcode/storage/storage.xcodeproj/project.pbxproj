@@ -678,6 +678,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(OMIM_ROOT)/3party/glm/",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Debug;
@@ -689,6 +690,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(OMIM_ROOT)/3party/glm/",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Release;

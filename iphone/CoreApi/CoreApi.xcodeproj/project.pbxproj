@@ -607,6 +607,7 @@
 					"$(inherited)",
 					"$(OMIM_ROOT)/3party/glm",
 					"$(OMIM_ROOT)/3party/pugixml/pugixml/src",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -631,6 +632,7 @@
 					"$(inherited)",
 					"$(OMIM_ROOT)/3party/glm",
 					"$(OMIM_ROOT)/3party/pugixml/pugixml/src",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;

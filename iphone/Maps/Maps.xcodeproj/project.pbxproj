@@ -4516,6 +4516,7 @@
 					"$(inherited)",
 					"$(OMIM_ROOT)/3party/glm",
 					"$(OMIM_ROOT)/3party/pugixml/pugixml/src",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 				INFOPLIST_FILE = OMaps.plist;
 				OTHER_CFLAGS = (
@@ -4557,6 +4558,7 @@
 					"$(inherited)",
 					"$(OMIM_ROOT)/3party/glm",
 					"$(OMIM_ROOT)/3party/pugixml/pugixml/src",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 				INFOPLIST_FILE = OMaps.plist;
 				OTHER_CFLAGS = (

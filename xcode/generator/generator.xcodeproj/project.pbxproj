@@ -1363,6 +1363,7 @@
 					"$(OMIM_ROOT)/3party/gflags/src",
 					"$(QT_PATH)/include",
 					"$(OMIM_ROOT)/3party/glm",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Debug;
@@ -1376,6 +1377,7 @@
 					"$(OMIM_ROOT)/3party/gflags/src",
 					"$(QT_PATH)/include",
 					"$(OMIM_ROOT)/3party/glm",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Release;

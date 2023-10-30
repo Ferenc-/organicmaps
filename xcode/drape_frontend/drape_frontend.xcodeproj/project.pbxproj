@@ -973,6 +973,7 @@
 					"$(OMIM_ROOT)/3party/protobuf/protobuf/src",
 					"$(OMIM_ROOT)/3party/protobuf",
 					"$(OMIM_ROOT)/3party/pugixml/pugixml/src",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Debug;
@@ -991,6 +992,7 @@
 					"$(OMIM_ROOT)/3party/protobuf/protobuf/src",
 					"$(OMIM_ROOT)/3party/protobuf",
 					"$(OMIM_ROOT)/3party/pugixml/pugixml/src",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Release;

@@ -735,6 +735,7 @@
 					"$(OMIM_ROOT)/3party/icu/icu/icu4c/source/i18n",
 					"$(OMIM_ROOT)/3party/Vulkan-Headers/include",
 					"$(OMIM_ROOT)/3party/vulkan_wrapper",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Debug;
@@ -759,6 +760,7 @@
 					"$(OMIM_ROOT)/3party/icu/icu/icu4c/source/i18n",
 					"$(OMIM_ROOT)/3party/Vulkan-Headers/include",
 					"$(OMIM_ROOT)/3party/vulkan_wrapper",
+					"$(OMIM_ROOT)/3party/utf8cpp/include",
 				);
 			};
 			name = Release;
