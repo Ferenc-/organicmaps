@@ -1,3 +1,5 @@
+#ifndef DRAPE_TEST
+
 #include "drape/gl_functions.hpp"
 #include "drape/gl_includes.hpp"
 #include "drape/gl_extensions_list.hpp"
@@ -1151,3 +1153,5 @@ void CheckGLError(base::SrcPoint const & srcPoint)
     result = glGetError();
   }
 }
+
+#endif // #ifndef DRAPE_TEST

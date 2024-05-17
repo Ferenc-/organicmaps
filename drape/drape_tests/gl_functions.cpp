@@ -1,3 +1,5 @@
+#ifdef DRAPE_TEST
+
 #include "drape/gl_functions.hpp"
 #include "drape/drape_tests/gl_mock_functions.hpp"
 
@@ -368,3 +370,5 @@ void GLFunctions::glClearDepthValue(double depth)
 {
   MOCK_CALL(glClearDepthValue(depth));
 }
+
+#endif // #ifdef DRAPE_TEST

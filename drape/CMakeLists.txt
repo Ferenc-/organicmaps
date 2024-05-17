@@ -1,6 +1,6 @@
 project(drape)
 
-set(SRC
+set(DRAPE_SRC
   attribute_buffer_mutator.cpp
   attribute_buffer_mutator.hpp
   attribute_provider.cpp
@@ -134,6 +134,8 @@ set(SRC
   vulkan/vulkan_vertex_array_buffer_impl.cpp
 )
 
+set(SRC ${DRAPE_SRC})
+
 if (PLATFORM_IPHONE)
   append(SRC
     hw_texture_ios.hpp
@@ -163,7 +165,7 @@ if (PLATFORM_LINUX)
   find_package(OpenGL)
 endif()
 
-target_link_libraries(${PROJECT_NAME}
+set(DRAPE_LINK_LIBRARIES
   indexer
   platform
   geometry
@@ -178,6 +180,8 @@ target_link_libraries(${PROJECT_NAME}
   $<$<BOOL:${PLATFORM_MAC}>:-framework\ OpenGL>
   $<$<BOOL:${PLATFORM_LINUX}>:OpenGL::GL>
 )
+
+target_link_libraries(${PROJECT_NAME} ${DRAPE_LINK_LIBRARIES})
 
 omim_add_test_subdirectory(drape_tests)
 
