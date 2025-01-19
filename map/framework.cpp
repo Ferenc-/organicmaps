@@ -90,7 +90,7 @@ namespace
 {
 std::string_view constexpr kMapStyleKey = "MapStyleKeyV1";
 std::string_view constexpr kAllow3dAlwaysKey = "Allow3dAlways";
-std::string_view constexpr kAllow3dInNavigationKey = "allow3dInNavigation";
+std::string_view constexpr kAllow3dInNavigationKey = "Allow3dInNavigation";
 std::string_view constexpr kAllow3dBuildingsKey = "Buildings3d";
 std::string_view constexpr kAllowAutoZoom = "AutoZoom";
 std::string_view constexpr kTrafficEnabledKey = "TrafficEnabled";
